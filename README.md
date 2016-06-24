@@ -48,7 +48,7 @@ SELECT * FROM ly_data;
 ```sql
 SELECT * FROM ly_change;
 ```
-### List detailed price changes
+#### List detailed price changes
 Do the create view only once.
 
 ```sql
@@ -57,6 +57,7 @@ SELECT aid AS `房源编号`
       ,size AS `面积`
       ,old_price AS `旧单价`
       ,new_price AS `新单价`
+      ,ROUND(new_total/10000) AS `新总价`
       ,CONCAT(IF(new_total>old_total, "+", "-"), ABS(ROUND((new_total-old_total)/10000))) AS `差价`
       ,DATE(ts) AS `变更日期`
 FROM ((SELECT p1.aid
@@ -79,7 +80,7 @@ Check with following each time,
 SELECT * FROM ly_change_view;
 ```
 
-### List apartments/houses having price change more than once
+#### List apartments/houses having price change more than once
 Do the create view only once.
 
 ```sql
@@ -87,9 +88,9 @@ CREATE VIEW ly_multi_change_view AS
 SELECT *
 FROM ly_change_view
 WHERE `房源编号` IN (SELECT `房源编号`
-                     FROM ly_change_view
-                     GROUP BY `房源编号`
-                     HAVING COUNT(*) > 1)
+                    FROM ly_change_view
+                    GROUP BY `房源编号`
+                    HAVING COUNT(*) > 1)
 ORDER BY `房源编号`, `变更日期`;
 ```
 Check with following each time,
@@ -98,7 +99,7 @@ Check with following each time,
 SELECT * FROM ly_multi_change_view;
 ```
 
-### List sold/withdrawn apartments/houses
+#### List sold/withdrawn apartments/houses
 Do the create view only once.
 
 ```sql
@@ -120,6 +121,15 @@ Check with following each time,
 ```sql
 SELECT * FROM ly_sold_view;
 ```
+
+### Analyze with visulization tools
+
++ Export to CSV file
+
+```sql
+SELECT location, size, price FROM ly_data INTO OUTFILE '/Users/xyz/xx' FIELDS TERMINATED BY ',';
+```
++ Follow [this link](https://www.kaggle.com/benhamner/d/uciml/iris/python-data-visualizations/comments)
 
 # What's coming next?
 It's boring to check data in MySQL each time. It's also tedious to see the data on console. So I plan to create a simple webiste to render the collected data on a web page.
