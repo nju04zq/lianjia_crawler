@@ -24,10 +24,10 @@ In lianjia_crawler.py, find comment section "Crawl Configurations". Do configura
 + Use cron to schedule the crawler running every day. Here is an example.
  - Create a shell script, setting the Python path. Like file name *lianjia_crawler.sh*, with content,
  
-```sh
-#!/bin/bash
-export PATH=/opt/local/Library/Frameworks/Python.framework/Versions/2.7/bin:$PATH
-/Users/xyz/lianjia/lianjia_crawler.py >> /Users/xyz/lianjia/lianjia_crawler.log 2>&1
+ ```sh
+ #!/bin/bash
+ export PATH=/opt/local/Library/Frameworks/Python.framework/Versions/2.7/bin: $PATH
+ /Users/xyz/lianjia/lianjia_crawler.py >> /Users/xyz/lianjia/lianjia_crawler.log 2>&1
 ```
  - Install task in cron with *"crontab -e"*, run the script 12:00 every day.
  
