@@ -14,6 +14,7 @@ import requests
 import datetime
 import tempfile
 import subprocess
+from lianjia_crawler_conf import MySQL_conf, region_def
 
 class Apartment(object):
     def __init__(self, tag=None, csv=None):
@@ -391,19 +392,8 @@ def crawl_main():
 
 ###########################################################
 ##########        Crawl Configurations           ##########
+##########        Think before change            ##########
 ###########################################################
-## MySQL configurations
-## Create database with "CREATE DATABASE lianjia;" first
-MySQL_conf = {
-        "host": "localhost",
-        "user": "root",
-        "passwd": "",
-        "db": "lianjia",
-        "charset": "utf8"}
-
-## The regions to crawl, with name-id pair, id should be unique
-region_def = {"松江大学城":"sjdxc", "罗阳":"ly"}
-
 ## How many processes to crawl for a region at the same time
 crawl_process_cnt = 4
 

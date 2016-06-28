@@ -13,7 +13,7 @@ BTW, before the crawler was finished and came to use, I've bought one in three d
 4. Install Python module MySQLdb with "pip install MySQL-python"
 
 ### Change crawler configurations
-In lianjia\_crawler.py, find comment section "Crawl Configurations". Do configuration changes according to comments.
+In lianjia\_crawler\_conf.py, find comment section "Crawl Configurations". Do configuration changes according to comments.
 
 + MySQL configurations in **MySQL\_conf**, set connection parameters. Remember to create a database named lianjia in MySQL with command *"CREATE DATABASE lianjia"*.
 
