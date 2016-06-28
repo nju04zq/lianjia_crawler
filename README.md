@@ -6,12 +6,14 @@ BTW, before the crawler was finished and came to use, I've bought one in three d
 # Installation guide
 
 ### Prerequisites
-1. Install Python 2.7
-2. Install MySQL
-3. Install Python module bs4, requests, MySQLdb with "pip install xxx"
+1. Install [Python 2.7](https://www.python.org/downloads/release)
+2. Install [MySQL](http://dev.mysql.com/downloads/)
+3. Install [pip](https://pip.pypa.io/en/stable/installing/)
+3. Install Python module bs4, requests with "pip install xxx"
+4. Install Python module MySQLdb with "pip install MySQL-python"
 
 ### Change crawler configurations
-In lianjia_crawler.py, find comment section "Crawl Configurations". Do configuration changes according to comments.
+In lianjia\_crawler.py, find comment section "Crawl Configurations". Do configuration changes according to comments.
 
 + MySQL configurations in **MySQL\_conf**, set connection parameters. Remember to create a database named lianjia in MySQL with command *"CREATE DATABASE lianjia"*.
 
@@ -53,25 +55,19 @@ Do the create view only once.
 
 ```sql
 CREATE VIEW ly_change_view AS
-SELECT aid AS `房源编号`
-      ,size AS `面积`
+SELECT t1.aid AS `房源编号`
+      ,ROUND(size) AS `面积`
       ,old_price AS `旧单价`
       ,new_price AS `新单价`
-      ,ROUND(new_total/10000) AS `新总价`
-      ,CONCAT(IF(new_total>old_total, "+", "-"), ABS(ROUND((new_total-old_total)/10000))) AS `差价`
-      ,DATE(ts) AS `变更日期`
-FROM ((SELECT p1.aid
-             ,size
-             ,old_price
-             ,(real_size * old_price) AS old_total
-             ,new_price
-             ,(real_size * new_price) AS new_total
-             ,p2.ts AS ts
-       FROM ly_data AS p1 INNER JOIN
-            ly_change AS p2
-            ON p1.aid = p2.aid
-       WHERE p2.old_price > 2000) #don't care about size change
-      AS tmp)
+      ,new_total AS `新总价`
+      ,CONCAT(IF(new_total>old_total, "+", "-"), ABS(new_total-old_total)) AS `差价`
+      ,DATE(t1.ts) AS `变更日期`
+FROM ly_change AS t1
+     INNER JOIN
+     ly_data AS t2
+     ON t1.aid = t2.aid
+WHERE t1.old_total <> t1.new_total AND
+      t1.old_price > 2000 #don't care about size change
 ORDER BY `变更日期`, `面积`;
 ```
 Check with following each time,
@@ -106,14 +102,14 @@ Do the create view only once.
 CREATE VIEW ly_sold_view AS
 SELECT aid AS `房源编号`
       ,LEFT(location, 5) AS `小区`
-      ,size AS `面积`
+      ,ROUND(size) AS `面积`
       ,price AS `单价`
-      ,ROUND((real_size * price)/10000) AS `总价`
-      ,DATE(ts) AS `下架日期`
+      ,total AS `总价`
+      ,DATE(uts) AS `下架日期`
 FROM ly_data,
-     (SELECT MAX(ts) AS latest
+     (SELECT MAX(uts) AS latest
       FROM ly_data) AS tmp
-WHERE DATE(latest) != DATE(ts)
+WHERE DATE(latest) != DATE(uts)
 ORDER BY `下架日期`, `面积`;
 ```
 Check with following each time,

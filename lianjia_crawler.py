@@ -53,6 +53,9 @@ class Apartment(object):
         self.location = result[0]["title"]
 
     def parse_price(self, tag):
+        result = tag.find_all("span", "num")
+        result = re.findall("\d+", result[0].contents[0])
+        self.total = int(result[0])
         result = tag.find_all("div", "price-pre")
         result = re.findall("\d+", result[0].contents[0])
         self.price = int(result[0])
@@ -60,46 +63,47 @@ class Apartment(object):
     def parse_size(self, tag):
         result = tag.find_all("div", "where")
         result = re.findall("<span>(\d+\.\d+)", str(result[0]))
-        self.real_size = result[0]
-        self.size = int(round(float(self.real_size)))
+        self.size = result[0]
 
     def __str__(self):
         result = ""
+        result += "{}\n".format(self.aid)
         result += "{}\n".format(self.location)
         result += "{}\n".format(self.price)
         result += "{}\n".format(self.size)
-        result += "{}\n".format(self.real_size)
-        result += "{}\n".format(self.href)
+        result += "{}\n".format(self.total)
         return result
 
 #   CREATE TABLE xx(location CHAR(32) CHARACTER SET utf8,
 #                   aid CHAR(32) CHARACTER SET utf8,
 #                   price INT,
-#                   size INT,
-#                   real_size CHAR(32) CHARACTER SET utf8,
-#                   ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+#                   size CHAR(32) CHARACTER SET utf8,
+#                   total INT,
+#                   nts DATETIME, # first recorded
+#                   uts DATETIME, # recently updated
 #                   PRIMARY KEY (aid));
     def sql_insert(self, table_name):
         s = ""
         s += "'{}',".format(self.location)
         s += "'{}',".format(self.aid)
         s += "{},".format(self.price)
-        s += "{},".format(self.size)
-        s += "'{}',".format(self.real_size)
-        s += "NOW()"
+        s += "'{}',".format(self.size)
+        s += "'{}',".format(self.total)
+        s += "NOW(), NOW()"
         return "INSERT INTO {} VALUE({})".format(table_name, s)
 
     def sql_update(self, table_name):
         s = ""
         s += "price = {},".format(self.price)
         s += "size = {},".format(self.size)
-        s += "ts = NOW()"
+        s += "total= {},".format(self.total)
+        s += "uts = NOW()"
         return "UPDATE {} SET {} WHERE aid = '{}'".format(table_name,
                                                           s, self.aid)
 
     @staticmethod
     def csv_title():
-        return "location,aid,price,size,real_size\n"
+        return "location,aid,price,size,total\n"
 
     def init_from_csv(self, csv):
         csv = csv.rstrip("\n")
@@ -107,17 +111,17 @@ class Apartment(object):
         self.location = fields[0]
         self.aid = fields[1]
         self.price = int(fields[2])
-        self.size = int(fields[3])
-        self.real_size = fields[4]
+        self.size = float(fields[3])
+        self.total = fields[4]
 
-# location,aid,price,size,real_size
+# location,aid,price,size,total
     def csv(self):
         s = ""
         s += "{},".format(self.location)
         s += "{},".format(self.aid)
         s += "{},".format(self.price)
         s += "{},".format(self.size)
-        s += "{}\n".format(self.real_size)
+        s += "{}\n".format(self.total)
         return s
 
 class SQLDB(object):
@@ -174,7 +178,7 @@ class SQLDB(object):
 def crawl_one_page(region, page_id, apartment_list):
     full_link = lianjia_link.format(page_id, region)
     r = requests.get(full_link)
-    soup = bs4.BeautifulSoup(r.text)
+    soup = bs4.BeautifulSoup(r.text, "html.parser")
 
     apartment_tags = soup.find_all("div", "info-panel")
     for apartment_tag in apartment_tags:
@@ -203,12 +207,13 @@ def get_region_maxpage(ctx):
     r = requests.get(full_link)
     s = r.text
 
-    soup = bs4.BeautifulSoup(s)
+    soup = bs4.BeautifulSoup(s, "html.parser")
 
     result = soup.find_all("div", "page-box house-lst-page-box")
     pages = re.findall(">(\d+)<", str(result[0]))
     maxpage = int(pages[-1])
     ctx.maxpage = maxpage
+    logging.critical("Region maxpage {}".format(ctx.maxpage))
 
 def generate_tmp_csv_filepath(tmpfile_base, i):
     csv_filepath = tmpfile_base + "_{}.csv".format(i)
@@ -268,9 +273,10 @@ def create_region_data_table(ctx, db):
     cmd = '''CREATE TABLE {}(location CHAR(32) CHARACTER SET utf8,
              aid CHAR(32) CHARACTER SET utf8,
              price INT,
-             size INT,
-             real_size CHAR(32) CHARACTER SET utf8,
-             ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+             size CHAR(32) CHARACTER SET utf8,
+             total INT,
+             nts DATETIME,
+             uts DATETIME,
              PRIMARY KEY (aid));'''.format(table_name)
     db.create_table(table_name, cmd)
 
@@ -279,7 +285,9 @@ def create_region_change_table(ctx, db):
     cmd = '''CREATE TABLE {}(aid CHAR(32) CHARACTER SET utf8,
              old_price INT,
              new_price INT,
-             ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP);'''.format(table_name)
+             old_total INT,
+             new_total INT,
+             ts DATETIME);'''.format(table_name)
     db.create_table(table_name, cmd)
 
 def create_db_trigger(ctx, db):
@@ -287,10 +295,13 @@ def create_db_trigger(ctx, db):
     cmd = '''CREATE TRIGGER {} AFTER UPDATE ON {} FOR EACH ROW
              BEGIN
                  IF OLD.price <> NEW.price THEN
-                     INSERT INTO {} VALUE(OLD.aid, OLD.price, NEW.price, NULL);
+                     INSERT INTO {} VALUE(OLD.aid, OLD.price, NEW.price,
+                                          OLD.total, NEW.total, NOW());
                  END IF;
                  IF OLD.size <> NEW.size THEN
-                     INSERT INTO {} VALUE(OLD.aid, OLD.size, NEW.size, NULL);
+                     INSERT INTO {} VALUE(OLD.aid, ROUND(OLD.size),
+                                          ROUND(NEW.size), OLD.total,
+                                          NEW.total, NOW());
                  END IF;
              END'''.format(trigger_name, ctx.region_data_table,
                            ctx.region_change_table, ctx.region_change_table)
@@ -305,6 +316,7 @@ def is_apartment_in_db(ctx, db, apartment):
     else:
         return True
 
+# Could use SQL "REPLACE INTO", but in that way not possible let trigger happen
 def update_apartment_into_db(ctx, db, apartment):
     if is_apartment_in_db(ctx, db, apartment):
         db.update(apartment.sql_update(ctx.region_data_table))
@@ -315,14 +327,17 @@ def update_db(ctx):
     db = prepare_db(ctx)
     fp = codecs.open(ctx.result_csv, mode="r", encoding="utf-8")
     fp.readline() #skip heading column stating
+    apartment_cnt = 0
     for csv_line in fp.readlines():
         apartment = Apartment(csv=csv_line)
         update_apartment_into_db(ctx, db, apartment)
+        apartment_cnt += 1
     fp.close()
     db.close()
+    logging.critical("updated {} apartments".format(apartment_cnt))
 
 def crawl_one_region(ctx):
-    logging.debug("crawl region {}".format(ctx.region))
+    logging.critical("crawl region {}".format(ctx.region))
     get_region_maxpage(ctx)
     create_crawl_subprocess(ctx)
     wait_for_crawl_subprocess(ctx)
@@ -364,6 +379,16 @@ def validate_region_def():
         else:
             region_id_set.add(region_id)
 
+def crawl_main():
+    validate_region_def()
+
+    logging.critical("crawl start")
+    for region in region_def.keys():
+        ctx = CrawlContext(region)
+        crawl_one_region(ctx)
+        ctx.clean()
+    logging.critical("crawl done")
+
 ###########################################################
 ##########        Crawl Configurations           ##########
 ###########################################################
@@ -371,8 +396,8 @@ def validate_region_def():
 ## Create database with "CREATE DATABASE lianjia;" first
 MySQL_conf = {
         "host": "localhost",
-        "user": "dir",
-        "passwd": "123",
+        "user": "root",
+        "passwd": "",
         "db": "lianjia",
         "charset": "utf8"}
 
@@ -386,10 +411,43 @@ crawl_process_cnt = 4
 lianjia_link = "http://sh.lianjia.com/ershoufang/d{}rs{}"
 ###########################################################
 
+##--------------------START Test Code----------------------------##
+
+def run_test_set_mysql_db_name():
+    MySQL_conf["db"] = "lianjia_test"
+
+def run_test(args):
+    run_test_set_mysql_db_name()
+    if args[0] == "csv_input":
+        run_test_csv_input(args[1])
+    elif args[0] == "page":
+        run_test_page()
+    else:
+        crawl_main()
+
+def run_test_csv_input(csv_filename):
+    region = region_def.keys()[0]
+    ctx = CrawlContext(region)
+    ctx.result_csv = csv_filename
+    update_db(ctx)
+
+def run_test_page():
+    region = region_def.keys()[0]
+    apartment_list = []
+    crawl_one_page(region, 0, apartment_list)
+    for apartment in apartment_list:
+        print apartment
+
+##--------------------END Test Code----------------------------##
+
 if __name__ == "__main__":
     init_logging()
     reload(sys)
     sys.setdefaultencoding("utf-8")
+
+    if len(sys.argv) > 1 and sys.argv[1] == "runtest":
+        run_test(sys.argv[2:])
+        sys.exit()
 
     # argv: "subprocess"/region/tmp_csv_file_path/page_start/page_end
     if len(sys.argv) > 1 and sys.argv[1] == "subprocess":
@@ -397,11 +455,4 @@ if __name__ == "__main__":
                            int(sys.argv[5]))
         sys.exit()
 
-    validate_region_def()
-
-    logging.critical("crawl start")
-    for region in region_def.keys():
-        ctx = CrawlContext(region)
-        crawl_one_region(ctx)
-        ctx.clean()
-    logging.critical("crawl done")
+    crawl_main()
