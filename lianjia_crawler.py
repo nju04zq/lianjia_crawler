@@ -6,7 +6,6 @@ import re
 import bs4
 import sys
 import time
-import codecs
 import MySQLdb
 import hashlib
 import logging
@@ -195,7 +194,7 @@ def crawl_pages(region, page_start, page_end):
 def crawl_page_process(region, csv_filepath, page_start, page_end):
     logging.debug("pid {}, crawl {}-{}".format(os.getpid(), page_start,
                                                page_end))
-    fp = codecs.open(csv_filepath, mode="w", encoding="utf-8")
+    fp = open(csv_filepath, mode="w")
     apartment_list = crawl_pages(region, page_start, page_end)
     for apartment in apartment_list:
         fp.write(apartment.csv())
@@ -250,17 +249,18 @@ def wait_for_crawl_subprocess(ctx):
 
 def collect_crawl_result(ctx):
     result_filename = ctx.tmpfile_base + "_total"
-    fp_result = codecs.open(result_filename, mode="w", encoding="utf-8")
+    fp_result = open(result_filename, mode="w")
     fp_result.write(Apartment.csv_title())
     for i in xrange(0, len(ctx.crawl_process_list)):
         csv_filepath = generate_tmp_csv_filepath(ctx.tmpfile_base, i)
-        fp_tmp = codecs.open(csv_filepath, mode="r", encoding="utf-8")
+        fp_tmp = open(csv_filepath, mode="r")
         csv_data = fp_tmp.read()
         fp_tmp.close()
         os.remove(csv_filepath)
         fp_result.write(csv_data)
     fp_result.close()
     ctx.result_csv = result_filename
+    logging.debug("Collect all results into {}".format(ctx.result_csv))
 
 def prepare_db(ctx):
     db = SQLDB()
@@ -326,7 +326,7 @@ def update_apartment_into_db(ctx, db, apartment):
 
 def update_db(ctx):
     db = prepare_db(ctx)
-    fp = codecs.open(ctx.result_csv, mode="r", encoding="utf-8")
+    fp = open(ctx.result_csv, mode="r")
     fp.readline() #skip heading column stating
     apartment_cnt = 0
     for csv_line in fp.readlines():
