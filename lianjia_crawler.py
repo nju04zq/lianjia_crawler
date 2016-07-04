@@ -345,6 +345,12 @@ def crawl_one_region(ctx):
     collect_crawl_result(ctx)
     update_db(ctx)
 
+def get_region_data_table_name(region_id):
+    return "{}_data".format(region_id)
+
+def get_region_change_table_name(region_id):
+    return "{}_change".format(region_id)
+
 class CrawlContext(object):
     def __init__(self, region):
         self.region = region
