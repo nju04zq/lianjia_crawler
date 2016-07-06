@@ -12,6 +12,8 @@ from lianjia_crawler import SQLDB, \
                             get_region_data_table_name, \
                             get_region_change_table_name
 
+lianjia_ershoufang_aid = "http://sh.lianjia.com/ershoufang/{}.html"
+
 def get_script_name():
     if os.environ.has_key("SCRIPT_NAME"):
         script_name = os.environ["SCRIPT_NAME"]
@@ -27,50 +29,42 @@ def get_request_uri():
         request_uri = get_script_name()
     return request_uri
 
-def add_to_query_table_old_query(query_param_table, old_query_str):
-    if old_query_str == "":
-        return
-    params = old_query_str.split("&")
-    for param in params:
-        key_value_pair = param.split("=")
-        key = key_value_pair[0]
-        value = key_value_pair[1]
-        if query_param_table.has_key(key):
-            query_param_table[key].append(value)
-        else:
-            query_param_table[key] = [value]
-
-def add_to_query_table_new_query(query_param_table, new_param_table):
-    for key in new_param_table.keys():
-        value = new_param_table[key]
+def add_to_query_table_params(query_param_table, params):
+    for key in params.keys():
+        value = params[key]
         if query_param_table.has_key(key):
             query_param_table[key] += value
         else:
             query_param_table[key] = value
 
-def generate_query_str(new_param_table, old_query_str):
-    query_param_table = collections.OrderedDict()
-    add_to_query_table_old_query(query_param_table, old_query_str)
-    add_to_query_table_new_query(query_param_table, new_param_table)
-    s = ""
+def generate_query_str(query_param_table):
+    s1 = ""
     for key in query_param_table.keys():
         values = query_param_table[key]
         values = list(set(values))
         for value in values:
-            if s != "":
-                s += "&"
-            s += "{}={}".format(urllib.quote(key), urllib.quote(value))
+            if s1 != "":
+                s1 += "&"
+            s1 += "{}={}".format(urllib.quote(key), urllib.quote(value))
+    s = "{}?{}".format(get_script_name(), s1)
     return s
 
-def request_uri_append_query_param(new_param_table):
-    ## this case for test on local machine
-    if not os.environ.has_key("QUERY_STRING") or \
-       not os.environ.has_key("SCRIPT_NAME"):
-       return "pending"
-    script_name = os.environ["SCRIPT_NAME"]
-    old_query_str = os.environ["QUERY_STRING"]
-    query_str = generate_query_str(new_param_table, old_query_str)
-    s = "{}?{}".format(script_name, query_str)
+def request_uri_append_query_param(new_params):
+    query_param_table = collections.OrderedDict()
+    add_to_query_table_params(query_param_table, web_params)
+    add_to_query_table_params(query_param_table, new_params)
+    s = generate_query_str(query_param_table)
+    return s
+
+def replace_query_table_params(query_param_table, params):
+    for key in params.keys():
+        query_param_table[key] = params[key]
+
+def request_uri_replace_query_param(new_params):
+    query_param_table = collections.OrderedDict()
+    add_to_query_table_params(query_param_table, web_params)
+    replace_query_table_params(query_param_table, new_params)
+    s = generate_query_str(query_param_table)
     return s
 
 def create_html_page():
@@ -93,6 +87,13 @@ def get_region_full_str(region_id):
         if region_id == region_def[region_full]:
             return region_full
     return None
+
+def compose_href_aid(aid):
+    a = HtmlAnchor()
+    a.set_href(lianjia_ershoufang_aid.format(aid))
+    a.set_value(aid)
+    a.set_target_new_page()
+    return a
 
 def compose_search_regions(form, default_region_id):
     popup = HtmlPopupMenu()
@@ -135,7 +136,7 @@ def compose_submit(form):
 
 def compose_html_search(body, search_env):
     if get_defined_region_cnt() == 0:
-        return
+        return None
 
     form = HtmlForm()
     body.add_element(form)
@@ -146,6 +147,7 @@ def compose_html_search(body, search_env):
     compose_search_types(form, search_env.search_type)
     form.add_entry(HtmlSpace(4))
     compose_submit(form)
+    return form
 
 def compose_error_paragraph(body, error_msg):
     p = HtmlParagraph()
@@ -167,51 +169,86 @@ def display_default_page():
     print page
 
 class SearchApartmentBase(object):
-    columns = ["aid", "location", "price", "size", "total", "nts", "uts"]
+    columns = ["aid", "location", "price", "size", "total", "uts", "days"]
     column_map = {"aid":"房源编号", "location":"小区", "price":"单价",
                   "size":"面积", "total":"总价",
-                  "nts":"上架日期", "uts":"更新日期"}
-    column_trim = {"size":"ROUND(size)", "nts":"DATE(nts)", "uts":"DATE(uts)"}
+                  "uts":"更新日期", "days":"上架天数"}
+    column_sql = {"size":"ROUND(size)", "nts":"DATE(nts)", "uts":"DATE(uts)",
+                  "days":"DATEDIFF(uts, nts)"}
     default_columns = ["aid", "location", "price", "size", "total", "uts"]
+    rows_per_page = 20
 
-    def __init__(self, region_id, show_column_ids):
-        self.region_id = region_id
-        self.show_columns = self.get_show_columns(show_column_ids)
+    def __init__(self, search_env):
+        self.region_id = search_env.region_id
+        self.show_columns = self.get_show_columns(search_env.show_column_ids)
+        self.cur_page = search_env.page
 
-    def get_show_columns(self, show_columns_ids):
-        if len(show_columns_ids) == 0:
+    def get_show_columns(self, show_column_ids):
+        if len(show_column_ids) == 0:
             return self.default_columns
-        show_columns_ids.sort()
+        show_column_ids.sort()
         show_columns = []
-        for column_id in show_columns_ids:
-            if column_id < 0 or column_id >= len(columns):
+        for column_id in show_column_ids:
+            if column_id < 0 or column_id >= len(self.columns):
                 continue
-            show_columns.append(columns[column_id])
+            show_columns.append(self.columns[column_id])
+        if len(show_columns) == 0:
+            show_columns = self.default_columns
         return show_columns
 
     def make_sql_column_str(self):
         show_columns = []
         for column in self.show_columns:
-            if self.column_trim.has_key(column):
-                column = self.column_trim[column]
+            if self.column_sql.has_key(column):
+                column = self.column_sql[column]
             show_columns.append(column)
         column_str = ",".join(show_columns)
         return column_str
 
-    def search_all(self):
-        if len(self.show_columns) == 0:
+    def make_sql_limit_str(self):
+        # page from 0-xx
+        max_page = (self.row_cnt+self.rows_per_page-1)/self.rows_per_page-1
+        if self.cur_page > max_page:
+            self.cur_page = max_page
+        self.max_page = max_page
+        limit_str = "LIMIT {}, {}".format(self.cur_page*self.rows_per_page,
+                                          self.rows_per_page)
+        return limit_str
+
+    def get_qualified_apartment_count(self, db):
+        table_name = get_region_data_table_name(self.region_id)
+        sql_cmd = "SELECT COUNT(*) FROM {};".format(table_name)
+        result = db.select(sql_cmd)
+        self.row_cnt = result[0][0]
+
+    def get_qualified_apartments(self, db):
+        if self.row_cnt == 0:
             self.rows = []
             return
         column_str = self.make_sql_column_str()
+        limit_str = self.make_sql_limit_str()
         table_name = get_region_data_table_name(self.region_id)
         sql_cmd = "SELECT {} FROM {} "\
-                  "ORDER BY uts DESC, price;".format(column_str, table_name)
-        db = SQLDB()
+                  "ORDER BY uts DESC, price {};"\
+                   .format(column_str, table_name, limit_str)
         logging.debug(sql_cmd)
         self.rows = db.select(sql_cmd)
 
+    def search_all(self):
+        db = SQLDB()
+        self.get_qualified_apartment_count(db)
+        self.get_qualified_apartments(db)
+        db.close()
+
+    def make_html_table_brief(self, body):
+        p = HtmlParagraph()
+        value = "Retrieved <b>{}</b> records.".format(self.row_cnt)
+        p.set_value(value, escape=False)
+        body.add_element(p)
+
     def make_html_table(self, body):
         table = HtmlTable()
+        table.set_tid("t01")
         body.add_element(table)
         tr = self.make_html_table_header_row()
         table.add_row(tr)
@@ -229,22 +266,105 @@ class SearchApartmentBase(object):
 
     def make_html_table_row(self, row):
         tr = HtmlTableRow()
-        for column in row:
+        for i in xrange(len(row)):
             cell = HtmlTableCell()
-            logging.debug("column {}, {}".format(column, type(column)))
-            if isinstance(column, float): #ROUND(size) still gets x.0, why
-                column = int(round(column))
-            cell.set_value(str(column))
+            escape = True
+            column_value = row[i]
+            if isinstance(column_value, float): #ROUND(size) still gets x.0, why
+                column_value = int(round(column_value))
+            elif self.columns[i] == "aid":
+                column_value = compose_href_aid(column_value)
+                escape = False
+            cell.set_value(str(column_value), escape)
+            if self.columns[i] == "days":
+                cell.set_align("center")
             tr.add_cell(cell)
         return tr
 
+    def make_html_show_columns(self, form):
+        column_idx = 0
+        for column in self.columns:
+            if column in self.show_columns:
+                is_show = True
+            else:
+                is_show = False
+            c = self.make_html_show_column_option(column_idx, is_show)
+            form.add_entry(c)
+            column_idx += 1
+
+    def make_html_show_column_option(self, column_idx, is_show):
+        c = HtmlCheckBox()
+        c.set_attrib_name(SearchEnv.s_column)
+        c.set_attrib_value("{}".format(column_idx))
+        value = self.column_map[self.columns[column_idx]]
+        c.set_value(value)
+        if is_show:
+            c.set_checked()
+        return c
+
+    def get_page_list(self):
+        page_list = []
+        max_page, cur_page, more_page = self.max_page, self.cur_page, -1
+        if max_page < 6:
+            return range(0,6), -1, -1
+
+        page_list.append(0)
+        if cur_page-1 > 0:
+            page_list.append(cur_page-1)
+        if cur_page > 0 and cur_page < max_page:
+            page_list.append(cur_page)
+        if cur_page+1 < max_page:
+            page_list.append(cur_page+1)
+        page_list.append(max_page)
+
+        if cur_page+2 < max_page:
+            more_page = cur_page+2
+        else:
+            more_page = cur_page-2
+
+        if cur_page-2 > 0:
+            less_page = cur_page-2
+        else:
+            less_page = -1
+        if less_page == more_page:
+            less_page = -1
+        if less_page != -1:
+            page_list += [less_page]
+
+        page_list += [more_page]
+        page_list.sort()
+        return page_list, more_page, less_page
+
+    def make_html_table_page_list(self, body):
+        page_list, more_page, less_page = self.get_page_list()
+        for i in page_list:
+            a = HtmlAnchor()
+            param = {SearchEnv.s_page:[str(i)]}
+            uri = request_uri_replace_query_param(param)
+            a.set_href(uri)
+            escape = True
+            if i == more_page or i == less_page:
+                value = "..."
+            elif i == self.cur_page:
+                value = "<mark>{}</mark>".format(i+1)
+                escape = False
+            else:
+                value = "{}".format(i+1)
+            a.set_value(value, escape)
+            body.add_element(a)
+
 def display_search_all(search_env):
-    s = SearchApartmentBase(search_env.region_id, [])
+    s = SearchApartmentBase(search_env)
     s.search_all()
     page = create_html_page()
     body = page.get_body()
-    compose_html_search(body, search_env)
+    form = compose_html_search(body, search_env)
+    form.add_entry(HtmlBr(2))
+    s.make_html_show_columns(form)
+    s.make_html_table_brief(body)
     s.make_html_table(body)
+    body.add_element(HtmlBr())
+    s.make_html_table_page_list(body)
     print page
 
 def display_search_result(search_env):
@@ -280,6 +400,8 @@ def init_logging():
 class SearchEnv(object):
     s_region = "region"
     s_type = "type"
+    s_column = "c"
+    s_page = "p"
 
     s_all = "s_all"
     s_change = "s_change"
@@ -299,23 +421,51 @@ class SearchEnv(object):
             return
         self.region_id = all_region_ids[0]
         self.search_type = SearchEnv.s_all
+        self.show_column_ids = []
+        self.page = 0
+
+    def parse_param_region(self, web_params):
+        all_region_ids = get_region_id_list()
+        region_id = web_params[SearchEnv.s_region][0]
+        if region_id in all_region_ids:
+            self.region_id = region_id
+
+    def parse_param_search_type(self, web_params):
+        search_type = web_params[SearchEnv.s_type][0]
+        if search_type in SearchEnv.search_types:
+            self.search_type = search_type
+
+    def parse_param_column(self, web_params):
+        self.show_column_ids = []
+        column_ids = web_params[SearchEnv.s_column]
+        for column_id in column_ids:
+            try:
+                column_id = int(column_id)
+                self.show_column_ids.append(column_id)
+            except:
+                pass
+
+    def parse_param_page(self, web_params):
+        page = web_params[SearchEnv.s_page][0]
+        try:
+            page = int(page)
+            if page < 0:
+                page = 0
+        except:
+            page = 0
+        self.page = page
 
     def init_from_web_params(self, web_params):
-        s_region = SearchEnv.s_region
-        s_type = SearchEnv.s_type
-
         self.init_as_default()
-        param_keys = web_params.keys()
-        all_region_ids = get_region_id_list()
-        if s_region in param_keys:
-            region_id = web_params[s_region][0]
-            logging.debug("region_id {}".format(region_id))
-            if region_id in all_region_ids:
-                self.region_id = region_id
-        if s_type in param_keys:
-            search_type = web_params[s_type][0]
-            if search_type in SearchEnv.search_types:
-                self.search_type = search_type
+        keys = web_params.keys()
+        if SearchEnv.s_region in keys:
+            self.parse_param_region(web_params)
+        if SearchEnv.s_type in keys:
+            self.parse_param_search_type(web_params)
+        if SearchEnv.s_column in keys:
+            self.parse_param_column(web_params)
+        if SearchEnv.s_page in keys:
+            self.parse_param_page(web_params)
 
     @staticmethod
     def get_search_type_desc(search_type):
@@ -330,12 +480,20 @@ class SearchEnv(object):
         else:
             raise Exception("Unknown search type {}".format(search_type))
 
+test_web_param = {
+"region":["sjdxc"],
+"type":["s_all"],
+"c":['0', '1', '2', '3', '4', '5'],
+"p":["11"]
+}
+
 if __name__ == "__main__":
     init_logging()
     reload(sys)
     sys.setdefaultencoding("utf-8")
     default_search_env = SearchEnv()
     web_params = get_web_params()
+    #web_params = test_web_param
     if get_web_param_cnt(web_params) == 0:
         display_default_page()
     else:

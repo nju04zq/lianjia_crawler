@@ -52,10 +52,7 @@ table#t01 tr:nth-child(even) {
 table#t01 tr:nth-child(odd) {
    background-color:#fff;
 }
-table#t01 th {
-    background-color: black;
-    color: white;
-}'''
+'''
 
     def __str__(self):
         s = ""
@@ -209,6 +206,7 @@ class HtmlAnchor(HtmlElement):
     def __init__(self):
         super(HtmlAnchor, self).__init__("a")
         self.attrib_href = None
+        self.attrib_target = None
 
     def set_href(self, href_value):
         if self.attrib_href is not None:
@@ -217,6 +215,14 @@ class HtmlAnchor(HtmlElement):
         attrib.set_value(href_value)
         self.add_attrib(attrib)
         self.attrib_href = attrib
+
+    def set_target_new_page(self):
+        if self.attrib_target is not None:
+            return
+        attrib = HtmlAttrib("target", is_url=True)
+        attrib.set_value("_blank")
+        self.add_attrib(attrib)
+        self.attrib_target = attrib
 
 class HtmlLi(HtmlElement):
     def __init__(self):
@@ -242,6 +248,14 @@ class HtmlTableCell(HtmlElement):
     def __init__(self):
         super(HtmlTableCell, self).__init__("td")
         self.value = ""
+        self.attrib_align = None
+
+    def set_align(self, align_value):
+        if self.attrib_align is not None:
+            return
+        attrib = HtmlAttrib("align", align_value)
+        self.add_attrib(attrib)
+        self.attrib_align = attrib
 
 class HtmlTableHeader(HtmlElement):
     def __init__(self):
@@ -260,8 +274,17 @@ class HtmlTable(HtmlElement):
     def __init__(self):
         super(HtmlTable, self).__init__("table")
         self.value = ""
+        self.attrib_tid = None
         self.header = None
         self.row_list = []
+
+    def set_tid(self, tid):
+        if self.attrib_tid is not None:
+            return
+        attrib = HtmlAttrib("id")
+        attrib.set_value(tid)
+        self.add_attrib(attrib)
+        self.attrib_tid = attrib
 
     def set_header(self, header):
         self.header = header
