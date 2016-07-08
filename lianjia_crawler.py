@@ -321,8 +321,10 @@ def is_apartment_in_db(ctx, db, apartment):
 def update_apartment_into_db(ctx, db, apartment):
     if is_apartment_in_db(ctx, db, apartment):
         db.update(apartment.sql_update(ctx.region_data_table))
+        logging.debug("updated {}".format(apartment.aid))
     else:
         db.insert(apartment.sql_insert(ctx.region_data_table))
+        logging.debug("insert {}".format(apartment.aid))
 
 def update_db(ctx):
     db = prepare_db(ctx)
@@ -404,7 +406,7 @@ def crawl_main():
 crawl_process_cnt = 4
 
 ## lianjia web link
-lianjia_link = "http://sh.lianjia.com/ershoufang/d{}rs{}"
+lianjia_link = "http://sh.lianjia.com/ershoufang/d{}s3rs{}"
 ###########################################################
 
 ##--------------------START Test Code----------------------------##

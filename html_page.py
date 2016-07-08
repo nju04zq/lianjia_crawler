@@ -344,6 +344,35 @@ class HtmlText(HtmlInput):
         super(HtmlText, self).__init__()
         self.set_attrib_type("text")
 
+class HtmlNumber(HtmlInput):
+    def __init__(self):
+        super(HtmlNumber, self).__init__()
+        self.set_attrib_type("number")
+        self.attrib_min = None
+        self.attrib_max = None
+        self.attrib_step = None
+
+    def set_min(self, min_val):
+        if self.attrib_min is not None:
+            return
+        attrib = HtmlAttrib("min", str(min_val))
+        self.add_attrib(attrib)
+        self.attrib_min = attrib
+
+    def set_max(self, max_val):
+        if self.attrib_max is not None:
+            return
+        attrib = HtmlAttrib("max", str(max_val))
+        self.add_attrib(attrib)
+        self.attrib_max = attrib
+
+    def set_step(self, step_val):
+        if self.attrib_step is not None:
+            return
+        attrib = HtmlAttrib("step", str(step_val))
+        self.add_attrib(attrib)
+        self.attrib_step = attrib
+
 class HtmlSubmit(HtmlInput):
     def __init__(self):
         super(HtmlSubmit, self).__init__()
