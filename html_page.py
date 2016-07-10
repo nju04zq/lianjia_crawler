@@ -202,6 +202,21 @@ class HtmlParagraph(HtmlElement):
         self.add_attrib(attrib)
         self.attrib_color = attrib
 
+class HtmlFont(HtmlElement):
+    def __init__(self, color = None):
+        super(HtmlFont, self).__init__("font")
+        self.attrib_color = None
+        if color is not None:
+            self.set_color(color)
+
+    def set_color(self, color):
+        if self.attrib_color is not None:
+            return
+        attrib = HtmlAttrib("color")
+        attrib.set_value(color)
+        self.add_attrib(attrib)
+        self.attrib_color = attrib
+
 class HtmlAnchor(HtmlElement):
     def __init__(self):
         super(HtmlAnchor, self).__init__("a")
@@ -249,6 +264,7 @@ class HtmlTableCell(HtmlElement):
         super(HtmlTableCell, self).__init__("td")
         self.value = ""
         self.attrib_align = None
+        self.attrib_bg_color = None
 
     def set_align(self, align_value):
         if self.attrib_align is not None:
@@ -256,6 +272,13 @@ class HtmlTableCell(HtmlElement):
         attrib = HtmlAttrib("align", align_value)
         self.add_attrib(attrib)
         self.attrib_align = attrib
+
+    def set_bg_color(self, bg_color):
+        if self.attrib_bg_color is not None:
+            return
+        attrib = HtmlAttrib("bgcolor", bg_color)
+        self.add_attrib(attrib)
+        self.attrib_bg_color = attrib
 
 class HtmlTableHeader(HtmlElement):
     def __init__(self):

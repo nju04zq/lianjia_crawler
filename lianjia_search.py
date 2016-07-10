@@ -242,31 +242,18 @@ class Column(object):
         self.sql = sql
         self.show = show
 
-class SearchApartmentBase(object):
-    # order/cid/cname/sql/show
-    columns = [
-        Column(0,  0, "aid", "房源编号", "", True),
-        Column(0,  0, "location", "小区", "", True),
-        Column(8,  4, "price", "单价", "", True),
-        Column(7,  2, "size", "面积", "ROUND(size) AS size", True),
-        Column(6,  2, "total", "总价", "", True),
-        Column(-9, 1, "uts", "更新日期", "DATE(uts) AS uts", True),
-        Column(0,  0, "days", "上架天数", "DATEDIFF(uts, nts) AS days", False)]
+class SearchApartment(object):
+    # define the columns
+    columns = []
     rows_per_page = 20
 
-    def __init__(self, search_env):
-        self.region_id = search_env.region_id
-        self.cur_page = search_env.page
-        self.order = search_env.order
-        self.only_active = search_env.only_active
-        self.only_inactive = False
-        self.price_min = search_env.price_min
-        self.price_max = search_env.price_max
-        self.size_min = search_env.size_min
-        self.size_max = search_env.size_max
-        self.total_min = search_env.total_min
-        self.total_max = search_env.total_max
-        self.get_column_show(search_env.show_column_indexes)
+    def __init__(self, show_column_indexes=[]):
+        self.order = 0
+        self.cur_page = 0
+        self.max_page = 0
+        self.rows = []
+        self.table_style = ""
+        self.get_column_show([])
         self.get_column_order()
 
     def get_column_from_cid(self, cid):
@@ -292,8 +279,8 @@ class SearchApartmentBase(object):
             self.get_default_column_show()
             return
 
-        show_column_indexes.sort()
         self.column_show = []
+        show_column_indexes.sort()
         for i in show_column_indexes:
             if i < 0 or i >= len(self.columns):
                 continue
@@ -345,63 +332,25 @@ class SearchApartmentBase(object):
             s = ""
         return s
 
-    def make_sql_where_str(self):
-        table_name = get_region_data_table_name(self.region_id)
-        s = "WHERE 1"
-        a = " AND DATE(uts) {} "\
-             "(SELECT DATE(MAX(uts)) FROM {})"
-        if self.only_active:
-            s += a.format("=", table_name)
-        elif self.only_inactive:
-            s += a.format("<>", table_name)
-        s += self.make_sql_range_str("price", self.price_min, self.price_max)
-        s += self.make_sql_range_str("size", self.size_min, self.size_max)
-        s += self.make_sql_range_str("total", self.total_min, self.total_max)
-        return s
-
     def make_sql_limit_str(self):
         # page from 0-xx
         max_page = (self.row_cnt+self.rows_per_page-1)/self.rows_per_page-1
         if self.cur_page > max_page:
             self.cur_page = max_page
         self.max_page = max_page
-        logging.debug("row_cnt {}, max_page {}".format(self.row_cnt, self.max_page))
         limit_str = "LIMIT {}, {}".format(self.cur_page*self.rows_per_page,
                                           self.rows_per_page)
         return limit_str
 
     def get_qualified_apartment_count(self, db):
-        table_name = get_region_data_table_name(self.region_id)
-        where_str = self.make_sql_where_str()
-        sql_cmd = "SELECT COUNT(*) FROM {} {};"\
-                  .format(table_name, where_str)
-        result = db.select(sql_cmd)
-        self.row_cnt = result[0][0]
+        # get row cnt
+        self.row_cnt = 0
 
     def get_qualified_apartments(self, db):
-        if self.row_cnt == 0:
-            self.rows = []
-            return
-        column_str = self.make_sql_column_str()
-        order_str = self.make_sql_order_str()
-        where_str = self.make_sql_where_str()
-        limit_str = self.make_sql_limit_str()
-        table_name = get_region_data_table_name(self.region_id)
-        sql_cmd = "SELECT {} FROM {} {} {} {}; "\
-                   .format(column_str, table_name, where_str,
-                           order_str, limit_str)
-        logging.debug(sql_cmd)
-        self.rows = db.select(sql_cmd)
+        # get data in rows
+        self.rows = []
 
-    def search_all(self):
-        db = SQLDB()
-        self.get_qualified_apartment_count(db)
-        self.get_qualified_apartments(db)
-        db.close()
-
-    def search_sold(self):
-        self.only_inactive = True
-        self.only_active = False
+    def search(self):
         db = SQLDB()
         self.get_qualified_apartment_count(db)
         self.get_qualified_apartments(db)
@@ -415,7 +364,7 @@ class SearchApartmentBase(object):
 
     def make_html_table(self, body):
         table = HtmlTable()
-        table.set_tid("t01")
+        table.set_tid(self.table_style)
         body.add_element(table)
         tr = self.make_html_table_header_row()
         table.add_row(tr)
@@ -473,19 +422,14 @@ class SearchApartmentBase(object):
     def make_html_table_row(self, row):
         tr = HtmlTableRow()
         for i in xrange(len(row)):
-            cell = HtmlTableCell()
-            escape = True
-            cell_value = row[i]
-            if isinstance(cell_value, float): #ROUND(size) still gets x.0, why
-                cell_value = int(round(cell_value))
-            elif self.columns[i].cid == "aid":
-                cell_value = compose_href_aid(cell_value)
-                escape = False
-            cell.set_value(str(cell_value), escape)
-            if self.columns[i].cid == "days":
-                cell.set_align("center")
+            cell = self.make_html_table_cell(self.columns[i].cid, row[i])
             tr.add_cell(cell)
         return tr
+
+    def make_html_table_cell(self, cid, cell_value):
+        cell = HtmlTableCell()
+        cell.set_value(str(cell_value))
+        return cell
 
     def make_html_show_columns(self, form):
         column_index = 0
@@ -511,7 +455,7 @@ class SearchApartmentBase(object):
         page_list = []
         max_page, cur_page, more_page = self.max_page, self.cur_page, -1
         if max_page < 6:
-            return range(0,max_page), -1, -1
+            return range(0,max_page+1), -1, -1
 
         page_list.append(0)
         if cur_page-1 > 0:
@@ -558,6 +502,248 @@ class SearchApartmentBase(object):
             a.set_value(value, escape)
             body.add_element(a)
 
+class SearchApartmentBase(SearchApartment):
+    # order/padding/cid/cname/sql/show
+    columns = [
+        Column(0,  0, "aid", "房源编号", "", True),
+        Column(0,  0, "location", "小区", "", True),
+        Column(8,  4, "price", "单价", "", True),
+        Column(7,  2, "size", "面积", "ROUND(size) AS size", True),
+        Column(6,  2, "total", "总价", "", True),
+        Column(-9, 1, "uts", "更新日期", "DATE(uts) AS uts", True),
+        Column(0,  0, "days", "上架天数", "DATEDIFF(uts, nts) AS days", False)]
+
+    def __init__(self, search_env):
+        self.table_style = "t01"
+        self.region_id = search_env.region_id
+        self.cur_page = search_env.page
+        self.order = search_env.order
+        self.only_active = search_env.only_active
+        self.only_inactive = False
+        self.price_min = search_env.price_min
+        self.price_max = search_env.price_max
+        self.size_min = search_env.size_min
+        self.size_max = search_env.size_max
+        self.total_min = search_env.total_min
+        self.total_max = search_env.total_max
+        self.get_column_show(search_env.show_column_indexes)
+        self.get_column_order()
+
+    def make_sql_where_str(self):
+        table_name = get_region_data_table_name(self.region_id)
+        s = "WHERE 1"
+        a = " AND DATE(uts) {} "\
+             "(SELECT DATE(MAX(uts)) FROM {})"
+        if self.only_active:
+            s += a.format("=", table_name)
+        elif self.only_inactive:
+            s += a.format("<>", table_name)
+        s += self.make_sql_range_str("price", self.price_min, self.price_max)
+        s += self.make_sql_range_str("size", self.size_min, self.size_max)
+        s += self.make_sql_range_str("total", self.total_min, self.total_max)
+        return s
+
+    def get_qualified_apartment_count(self, db):
+        table_name = get_region_data_table_name(self.region_id)
+        where_str = self.make_sql_where_str()
+        sql_cmd = "SELECT COUNT(*) FROM {} {};"\
+                  .format(table_name, where_str)
+        result = db.select(sql_cmd)
+        self.row_cnt = result[0][0]
+
+    def get_qualified_apartments(self, db):
+        if self.row_cnt == 0:
+            self.rows = []
+            return
+        column_str = self.make_sql_column_str()
+        order_str = self.make_sql_order_str()
+        where_str = self.make_sql_where_str()
+        limit_str = self.make_sql_limit_str()
+        table_name = get_region_data_table_name(self.region_id)
+        sql_cmd = "SELECT {} FROM {} {} {} {}; "\
+                   .format(column_str, table_name, where_str,
+                           order_str, limit_str)
+        logging.debug(sql_cmd)
+        self.rows = db.select(sql_cmd)
+
+    def search_all(self):
+        db = SQLDB()
+        self.get_qualified_apartment_count(db)
+        self.get_qualified_apartments(db)
+        db.close()
+
+    def search_sold(self):
+        self.only_inactive = True
+        self.only_active = False
+        db = SQLDB()
+        self.get_qualified_apartment_count(db)
+        self.get_qualified_apartments(db)
+        db.close()
+
+    def make_html_table_cell(self, cid, cell_value):
+        cell = HtmlTableCell()
+        escape = True
+        if isinstance(cell_value, float): #ROUND(size) still gets x.0, why
+            cell_value = int(round(cell_value))
+        elif cid == "aid":
+            cell_value = compose_href_aid(cell_value)
+            escape = False
+        cell.set_value(str(cell_value), escape)
+        if cid == "days":
+            cell.set_align("center")
+        return cell
+
+class SearchApartmentChange(SearchApartment):
+    # order/padding/cid/cname/sql/show
+    columns = [
+        Column(0,  0, "aid", "房源编号", "t1.aid", True),
+        Column(0,  0, "location", "小区", "", True),
+        Column(0,  2, "size", "面积", "ROUND(t1.size) AS size", True),
+        Column(0,  4, "old_price", "旧单价", "", True),
+        Column(0,  4, "new_price", "新单价", "", True),
+        Column(0,  0, "new_total", "新总价", "", True),
+        Column(8,  1, "diff", "差价", "(new_total-old_total) as diff", True),
+        Column(-9, 1, "ts", "变更日期", "DATE(ts) AS ts", True)]
+
+    def __init__(self, search_env):
+        self.table_style = "t01"
+        self.region_id = search_env.region_id
+        self.cur_page = search_env.page
+        self.order = search_env.order
+        self.get_column_show([])
+        self.get_column_order()
+
+    def get_changed_apartment_count(self, db):
+        table_name = get_region_change_table_name(self.region_id)
+        sql_cmd = "SELECT COUNT(*) FROM {} WHERE old_total <> new_total;"\
+                  .format(table_name)
+        result = db.select(sql_cmd)
+        self.row_cnt = result[0][0]
+
+    def get_changed_apartments(self, db):
+        if self.row_cnt == 0:
+            self.rows = []
+            return
+        column_str = self.make_sql_column_str()
+        order_str = self.make_sql_order_str()
+        limit_str = self.make_sql_limit_str()
+        data_table_name = get_region_data_table_name(self.region_id)
+        change_table_name = get_region_change_table_name(self.region_id)
+        sql_cmd = "SELECT {} FROM {} AS t1 INNER JOIN {} AS t2 "\
+                  "ON t1.aid = t2.aid "\
+                  "WHERE old_total <> new_total {} {}; "\
+                   .format(column_str, data_table_name, change_table_name,
+                           order_str, limit_str)
+        logging.debug(sql_cmd)
+        self.rows = db.select(sql_cmd)
+
+    def search_change(self):
+        db = SQLDB()
+        self.get_changed_apartment_count(db)
+        self.get_changed_apartments(db)
+        db.close()
+
+    def compose_diff_value(self, val):
+        if val > 0:
+            s = "+{}".format(val)
+            color = "green"
+        else:
+            s = str(val)
+            color = "red"
+
+        f = HtmlFont(color)
+        f.set_value(s)
+        return str(f)
+
+    def make_html_table_cell(self, cid, cell_value):
+        cell = HtmlTableCell()
+        escape = True
+        if isinstance(cell_value, float): #ROUND(size) still gets x.0, why
+            cell_value = int(round(cell_value))
+        elif cid == "aid":
+            cell_value = compose_href_aid(cell_value)
+            escape = False
+        elif cid == "diff":
+            cell_value = self.compose_diff_value(cell_value)
+            escape = False
+        cell.set_value(str(cell_value), escape)
+        return cell
+
+class SearchApartmentMultiChange(SearchApartmentChange):
+    # order/padding/cid/cname/sql/show
+    columns = [
+        Column(0,  0, "aid", "房源编号", "t1.aid", True),
+        Column(0,  0, "location", "小区", "", True),
+        Column(0,  2, "size", "面积", "ROUND(t1.size) AS size", True),
+        Column(0,  4, "old_price", "旧单价", "", True),
+        Column(0,  4, "new_price", "新单价", "", True),
+        Column(0,  0, "new_total", "新总价", "", True),
+        Column(0,  1, "diff", "差价", "(new_total-old_total) as diff", True),
+        Column(0,  1, "ts", "变更日期", "DATE(ts) AS ts", True)]
+
+    def __init__(self, search_env):
+        super(SearchApartmentMultiChange, self).__init__(search_env)
+        self.table_style = ""
+        pass
+
+    def get_multi_changed_apartment_count(self, db):
+        data_table_name = get_region_data_table_name(self.region_id)
+        change_table_name = get_region_change_table_name(self.region_id)
+        sql_cmd = "SELECT COUNT(*) FROM "\
+                  "(SELECT aid FROM {} WHERE old_total <> new_total "\
+                  "GROUP BY aid HAVING COUNT(*) > 1) AS t;".\
+                  format(change_table_name)
+        result = db.select(sql_cmd)
+        self.row_cnt = result[0][0]
+
+    def get_multi_changed_apartments(self, db):
+        if self.row_cnt == 0:
+            self.rows = []
+            return
+        column_str = self.make_sql_column_str()
+        order_str = self.make_sql_order_str()
+        data_table_name = get_region_data_table_name(self.region_id)
+        change_table_name = get_region_change_table_name(self.region_id)
+        sql_cmd = "SELECT {} FROM {} AS t1 INNER JOIN {} AS t2 "\
+                  "ON t1.aid = t2.aid "\
+                  "WHERE old_total <> new_total AND "\
+                  "t2.aid IN (SELECT aid FROM {} WHERE old_total <> new_total "\
+                  "GROUP BY aid HAVING COUNT(*) > 1) ORDER BY t1.aid, ts".\
+                  format(column_str, data_table_name, change_table_name,
+                         change_table_name)
+        logging.debug(sql_cmd)
+        self.rows = db.select(sql_cmd)
+
+    def search_multi_change(self):
+        db = SQLDB()
+        self.get_multi_changed_apartment_count(db)
+        self.get_multi_changed_apartments(db)
+        db.close()
+
+    def make_html_table(self, body):
+        colors = ["#ccc", "#fff"]
+        color_idx = 0
+
+        table = HtmlTable()
+        table.set_tid(self.table_style)
+        body.add_element(table)
+        tr = self.make_html_table_header_row()
+        table.add_row(tr)
+        for i in xrange(len(self.rows)):
+            if i != 0 and self.rows[i][0] != self.rows[i-1][0]:
+                color_idx += 1
+            color = colors[color_idx % len(colors)]
+            tr = self.make_html_table_row(self.rows[i], color)
+            table.add_row(tr)
+
+    def make_html_table_row(self, row, color):
+        tr = HtmlTableRow()
+        for i in xrange(len(row)):
+            cell = self.make_html_table_cell(self.columns[i].cid, row[i])
+            cell.set_bg_color(color)
+            tr.add_cell(cell)
+        return tr
+
 def display_search_all(search_env):
     s = SearchApartmentBase(search_env)
     s.search_all()
@@ -590,13 +776,38 @@ def display_search_sold(search_env):
     s.make_html_table_page_list(body)
     print page
 
+def display_search_change(search_env):
+    s = SearchApartmentChange(search_env)
+    s.search_change()
+    page = create_html_page()
+    body = page.get_body()
+    form = compose_html_search(body, search_env)
+    form.add_entry(HtmlBr())
+    s.make_html_table_brief(body)
+    s.make_html_table(body)
+    body.add_element(HtmlBr())
+    s.make_html_table_page_list(body)
+    print page
+
+def display_search_multi_change(search_env):
+    s = SearchApartmentMultiChange(search_env)
+    s.search_multi_change()
+    page = create_html_page()
+    body = page.get_body()
+    form = compose_html_search(body, search_env)
+    form.add_entry(HtmlBr())
+    s.make_html_table_brief(body)
+    s.make_html_table(body)
+    body.add_element(HtmlBr())
+    print page
+
 def display_search_result(search_env):
     if search_env.search_type == SearchEnv.type_all:
         display_search_all(search_env)
     elif search_env.search_type == SearchEnv.type_change:
-        display_search_all(search_env)
+        display_search_change(search_env)
     elif search_env.search_type == SearchEnv.type_multi_change:
-        display_search_all(search_env)
+        display_search_multi_change(search_env)
     elif search_env.search_type == SearchEnv.type_sold:
         display_search_sold(search_env)
     else:
@@ -764,7 +975,7 @@ class SearchEnv(object):
 
 test_web_param = {
 "region":["sjdxc"],
-"type":["all"],
+"type":["mchange"],
 "c":['0', '1', '2', '3', '4', '5'],
 "p":["11"]
 }
@@ -785,5 +996,3 @@ if __name__ == "__main__":
         except Exception as e:
             s = traceback.format_exc()
             display_error_page(s)
-
-    compose_html_range(form, "单价")
