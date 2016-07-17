@@ -30,6 +30,8 @@ class Apartment(object):
         self.parse_price(tag)
         self.parse_size(tag)
         self.parse_id()
+        self.parse_subway(tag)
+        self.parse_building(tag)
 
         if self.aid == "":
             raise Exception("Apartment id could not be empty")
@@ -65,6 +67,81 @@ class Apartment(object):
         result = re.findall("<span>(\d+\.\d+)", str(result[0]))
         self.size = result[0]
 
+    def parse_subway(self, tag):
+        result = tag.find_all("span", "fang-subway-ex")
+        if len(result) == 0:
+            self.subway = 0
+            self.station = ""
+            self.smeter = 0
+            return
+
+        result = re.findall("<span>(.*)</span>", str(result[0].contents[0]))
+        result = re.findall("(\d+)号线(.*)站(\d+)米", result[0])
+        self.subway = result[0][0]
+        self.station = result[0][1]
+        self.smeter = result[0][2]
+
+    def parse_building(self, tag):
+        result = tag.find_all("div", "con")
+        result = re.findall("<span>\|</span>(.*)\r\n\t", str(result[0]))
+        if len(result)  == 1:
+            result += [result[0], result[0]]
+        elif len(result) == 2:
+            result.append(result[1])
+        self.parse_floor(result[0])
+        self.parse_year(result[2])
+
+    def parse_floor(self, s):
+        result = self.parse_normal_floor(s)
+        if result:
+            return
+        result = self.parse_villa_floor(s)
+        if result:
+            return
+        self.floor = "U"
+        self.tfloor = 0
+
+    def parse_normal_floor(self, s):
+        result = re.findall("(.*)层/(\d+)层", s)
+        if len(result) == 0:
+            return False
+
+        result = result[0]
+
+        if result[0] == "低":
+            self.floor = "L"
+        elif result[0] == "中":
+            self.floor = "M"
+        elif result[0] == "高":
+            self.floor = "H"
+        else:
+            self.floor = "U"
+
+        self.tfloor = int(result[1])
+        return True
+
+    def parse_villa_floor(self, s):
+        result = re.findall("(\d+)层", s)
+        if len(result) == 0:
+            return False
+
+        self.floor = "V"
+        self.tfloor = int(result[0])
+        return True
+
+    def parse_year(self, s):
+        self.year = "NULL"
+
+        result = re.findall("(\d+)", s)
+        if len(result) == 0:
+            return
+
+        self.year = int(result[0])
+        if self.year < 1000:
+            self.year = "NULL"
+        else:
+            self.year = str(self.year)
+
     def __str__(self):
         result = ""
         result += "{}\n".format(self.aid)
@@ -72,6 +149,9 @@ class Apartment(object):
         result += "{}\n".format(self.price)
         result += "{}\n".format(self.size)
         result += "{}\n".format(self.total)
+        result += "{}/{}/{}\n".format(self.subway, self.station, self.smeter)
+        result += "{}/{}\n".format(self.floor, self.tfloor)
+        result += "{}\n".format(self.year)
         return result
 
 #   CREATE TABLE xx(location CHAR(32) CHARACTER SET utf8,
@@ -81,6 +161,12 @@ class Apartment(object):
 #                   total INT,
 #                   nts DATETIME, # first recorded
 #                   uts DATETIME, # recently updated
+#                   subway INT,
+#                   station CHAR(16) CHARACTER SET utf8,
+#                   smeter INT,
+#                   floor CHAR(4) CHARACTER SET utf8,
+#                   tfloor INT,
+#                   year INT,
 #                   PRIMARY KEY (aid));
     def sql_insert(self, table_name):
         s = ""
@@ -89,14 +175,26 @@ class Apartment(object):
         s += "{},".format(self.price)
         s += "'{}',".format(self.size)
         s += "'{}',".format(self.total)
-        s += "NOW(), NOW()"
+        s += "NOW(), NOW(),"
+        s += "{},".format(self.subway)
+        s += "'{}',".format(self.station)
+        s += "{},".format(self.smeter)
+        s += "'{}',".format(self.floor)
+        s += "{},".format(self.tfloor)
+        s += "{}".format(self.year)
         return "INSERT INTO {} VALUE({})".format(table_name, s)
 
     def sql_update(self, table_name):
         s = ""
         s += "price = {},".format(self.price)
-        s += "size = {},".format(self.size)
+        s += "size = '{}',".format(self.size)
         s += "total= {},".format(self.total)
+        s += "subway= {},".format(self.subway)
+        s += "station= '{}',".format(self.station)
+        s += "smeter= {},".format(self.smeter)
+        s += "floor= '{}',".format(self.floor)
+        s += "tfloor= {},".format(self.tfloor)
+        s += "year= {},".format(self.year)
         s += "uts = NOW()"
         return "UPDATE {} SET {} WHERE aid = '{}'".format(table_name,
                                                           s, self.aid)
@@ -113,15 +211,27 @@ class Apartment(object):
         self.price = int(fields[2])
         self.size = float(fields[3])
         self.total = fields[4]
+        self.subway = int(fields[5])
+        self.station = fields[6]
+        self.smeter = int(fields[7])
+        self.floor = fields[8]
+        self.tfloor = int(fields[9])
+        self.year = fields[10]
 
-# location,aid,price,size,total
+# location,aid,price,size,total,subway,station,smeter,floor,tfloor,year
     def csv(self):
         s = ""
         s += "{},".format(self.location)
         s += "{},".format(self.aid)
         s += "{},".format(self.price)
         s += "{},".format(self.size)
-        s += "{}\n".format(self.total)
+        s += "{},".format(self.total)
+        s += "{},".format(self.subway)
+        s += "{},".format(self.station)
+        s += "{},".format(self.smeter)
+        s += "{},".format(self.floor)
+        s += "{},".format(self.tfloor)
+        s += "{}\n".format(self.year)
         return s
 
 class SQLDB(object):
@@ -175,9 +285,8 @@ class SQLDB(object):
     def close(self):
         self.db.close()
 
-def crawl_one_page(region, page_id, apartment_list):
-    full_link = lianjia_link.format(page_id, region)
-    r = requests.get(full_link)
+def crawl_link(link, apartment_list):
+    r = requests.get(link)
     soup = bs4.BeautifulSoup(r.text, "html.parser")
 
     apartment_tags = soup.find_all("div", "info-panel")
@@ -185,35 +294,26 @@ def crawl_one_page(region, page_id, apartment_list):
         apartment = Apartment(tag=apartment_tag)
         apartment_list.append(apartment)
 
-def crawl_pages(region, page_start, page_end):
+def crawl_one_page(region_id, page_id, apartment_list):
+    full_link = crawl_regions[region_id].get_link(page_id)
+    crawl_link(full_link, apartment_list)
+
+def crawl_pages(region_id, page_start, page_end):
     apartment_list = []
     for page_id in xrange(page_start, page_end):
-        crawl_one_page(region, page_id, apartment_list)
+        crawl_one_page(region_id, page_id, apartment_list)
     return apartment_list
 
-def crawl_page_process(region, csv_filepath, page_start, page_end):
+def crawl_page_process(region_id, csv_filepath, page_start, page_end):
     logging.debug("pid {}, crawl {}-{}".format(os.getpid(), page_start,
                                                page_end))
     fp = open(csv_filepath, mode="w")
-    apartment_list = crawl_pages(region, page_start, page_end)
+    apartment_list = crawl_pages(region_id, page_start, page_end)
     for apartment in apartment_list:
         fp.write(apartment.csv())
     fp.close()
     logging.debug("{}-{}, written to {}".format(page_start, page_end,
                                                 csv_filepath))
-
-def get_region_maxpage(ctx):
-    full_link = lianjia_link.format(1, ctx.region)
-    r = requests.get(full_link)
-    s = r.text
-
-    soup = bs4.BeautifulSoup(s, "html.parser")
-
-    result = soup.find_all("div", "page-box house-lst-page-box")
-    pages = re.findall(">(\d+)<", str(result[0]))
-    maxpage = int(pages[-1])
-    ctx.maxpage = maxpage
-    logging.critical("Region maxpage {}".format(ctx.maxpage))
 
 def generate_tmp_csv_filepath(tmpfile_base, i):
     csv_filepath = tmpfile_base + "_{}.csv".format(i)
@@ -227,7 +327,7 @@ def create_crawl_subprocess(ctx):
     while maxpage > 0:
         page_load = min(maxpage, page_load)
         csv_filepath = generate_tmp_csv_filepath(ctx.tmpfile_base, i)
-        args = [sys.argv[0], "subprocess", ctx.region, csv_filepath,
+        args = [sys.argv[0], "subprocess", ctx.region_id, csv_filepath,
                 str(page_start), str(page_start + page_load)]
         process = subprocess.Popen(args)
         process_list.append(process)
@@ -278,6 +378,12 @@ def create_region_data_table(ctx, db):
              total INT,
              nts DATETIME,
              uts DATETIME,
+             subway INT,
+             station CHAR(16) CHARACTER SET utf8,
+             smeter INT,
+             floor CHAR(4) CHARACTER SET utf8,
+             tfloor INT,
+             year INT,
              PRIMARY KEY (aid));'''.format(table_name)
     db.create_table(table_name, cmd)
 
@@ -339,8 +445,22 @@ def update_db(ctx):
     db.close()
     logging.critical("updated {} apartments".format(apartment_cnt))
 
+def get_region_maxpage(ctx):
+    full_link = crawl_regions[ctx.region_id].get_link(1)
+    r = requests.get(full_link)
+    s = r.text
+
+    soup = bs4.BeautifulSoup(s, "html.parser")
+
+    result = soup.find_all("div", "page-box house-lst-page-box")
+    pages = re.findall(">(\d+)<", str(result[0]))
+    maxpage = int(pages[-1])
+    ctx.maxpage = maxpage
+    logging.critical("Region maxpage {}".format(ctx.maxpage))
+
 def crawl_one_region(ctx):
-    logging.critical("crawl region {}".format(ctx.region))
+    region_name = crawl_regions[ctx.region_id].region_name
+    logging.critical("crawl region {}".format(region_name))
     get_region_maxpage(ctx)
     create_crawl_subprocess(ctx)
     wait_for_crawl_subprocess(ctx)
@@ -353,10 +473,27 @@ def get_region_data_table_name(region_id):
 def get_region_change_table_name(region_id):
     return "{}_change".format(region_id)
 
+class CrawlRegion(object):
+    def __init__(self, param):
+        self.region_name = param[0]
+        self.region_id = param[1]
+        if len(param) > 2:
+            self.big_region = param[2]
+        else:
+            self.big_region = None
+
+    def get_link(self, page):
+        if self.big_region is None:
+            base_link = "http://sh.lianjia.com/ershoufang/d{}s3rs{}"
+            full_link = base_link.format(page, self.region_name)
+        else:
+            base_link = "http://sh.lianjia.com/ershoufang/{}/d{}s3"
+            full_link = base_link.format(self.big_region, page)
+        return full_link
+
 class CrawlContext(object):
-    def __init__(self, region):
-        self.region = region
-        self.region_id = region_def[region]
+    def __init__(self, region_id):
+        self.region_id = region_id
         self.tmpfile_base = self.generate_tmpfile_base()
         self.maxpage = 0
         self.crawl_process_cnt = crawl_process_cnt
@@ -379,21 +516,18 @@ def init_logging():
     logging.basicConfig(format="%(asctime)s %(message)s",
                         level=logging.ERROR)
 
-def validate_region_def():
-    region_id_set = set()
-    for region in region_def.keys():
-        region_id = region_def[region]
-        if region_id in region_id_set: 
-            raise Exception("Duplicate region id {}".format(region_id))
+def make_region_table(crawl_regions):
+    for param in region_def:
+        region = CrawlRegion(param)
+        if crawl_regions.has_key(region.region_id):
+            raise Exception("Duplicate region id {}".format(region.region_id))
         else:
-            region_id_set.add(region_id)
+            crawl_regions[region.region_id] = region
 
 def crawl_main():
-    validate_region_def()
-
     logging.critical("crawl start")
-    for region in region_def.keys():
-        ctx = CrawlContext(region)
+    for region_id in crawl_regions.keys():
+        ctx = CrawlContext(region_id)
         crawl_one_region(ctx)
         ctx.clean()
     logging.critical("crawl done")
@@ -418,36 +552,40 @@ def run_test(args):
     run_test_set_mysql_db_name()
     if args[0] == "csv_input":
         run_test_csv_input(args[1])
-    elif args[0] == "page":
-        run_test_page()
+    elif args[0] == "link":
+        run_test_link()
     else:
         crawl_main()
 
 def run_test_csv_input(csv_filename):
-    region = region_def.keys()[0]
-    ctx = CrawlContext(region)
+    region_id = crawl_regions.keys()[0]
+    ctx = CrawlContext(region_id)
     ctx.result_csv = csv_filename
     update_db(ctx)
 
-def run_test_page():
-    region = region_def.keys()[0]
+def run_test_link():
     apartment_list = []
-    crawl_one_page(region, 0, apartment_list)
+    crawl_link("http://sh.lianjia.com/ershoufang/putuo/s2rs",
+               apartment_list)
     for apartment in apartment_list:
         print apartment
 
 ##--------------------END Test Code----------------------------##
 
 if __name__ == "__main__":
+    crawl_regions = {}
+
     init_logging()
     reload(sys)
     sys.setdefaultencoding("utf-8")
+
+    make_region_table(crawl_regions)
 
     if len(sys.argv) > 1 and sys.argv[1] == "runtest":
         run_test(sys.argv[2:])
         sys.exit()
 
-    # argv: "subprocess"/region/tmp_csv_file_path/page_start/page_end
+    # argv: "subprocess"/region_id/tmp_csv_file_path/page_start/page_end
     if len(sys.argv) > 1 and sys.argv[1] == "subprocess":
         crawl_page_process(sys.argv[2], sys.argv[3], int(sys.argv[4]),
                            int(sys.argv[5]))

@@ -255,9 +255,18 @@ class HtmlUnorderedList(HtmlElement):
     def __init__(self):
         super(HtmlUnorderedList, self).__init__("ul")
         self.value = ""
+        self.attrib_list_style = None
 
     def add_entry(self, entry):
         self.add_sub_element(entry)
+
+    def set_list_style(self, style):
+        if self.attrib_list_style is not None:
+            return
+        attrib = HtmlAttrib("style", style)
+        self.add_attrib(attrib)
+        self.attrib_list_style = attrib
+
 
 class HtmlTableCell(HtmlElement):
     def __init__(self):
@@ -366,6 +375,30 @@ class HtmlText(HtmlInput):
     def __init__(self):
         super(HtmlText, self).__init__()
         self.set_attrib_type("text")
+        self.attrib_readonly = None
+        self.attrib_size = None
+        self.attrib_hidden = None
+
+    def set_readonly(self):
+        if self.attrib_readonly is not None:
+            return
+        attrib = HtmlAttrib("readonly", "readonly")
+        self.add_attrib(attrib)
+        self.attrib_readonly = attrib
+
+    def set_size(self, size):
+        if self.attrib_size is not None:
+            return
+        attrib = HtmlAttrib("size", str(size))
+        self.add_attrib(attrib)
+        self.attrib_size = attrib
+
+    def set_hidden(self):
+        if self.attrib_hidden is not None:
+            return
+        attrib = HtmlAttrib("hidden", "hidden")
+        self.add_attrib(attrib)
+        self.attrib_hidden = attrib
 
 class HtmlNumber(HtmlInput):
     def __init__(self):
@@ -396,10 +429,42 @@ class HtmlNumber(HtmlInput):
         self.add_attrib(attrib)
         self.attrib_step = attrib
 
-class HtmlSubmit(HtmlInput):
+class HtmlButton(HtmlElement):
     def __init__(self):
-        super(HtmlSubmit, self).__init__()
+        super(HtmlButton, self).__init__("button")
+        self.value = ""
+        self.attrib_type = None
+        self.attrib_value = None
+
+    def set_attrib_type(self, type_value):
+        if self.attrib_type is not None:
+            return
+        attrib = HtmlAttrib("type")
+        attrib.set_value(type_value)
+        self.add_attrib(attrib)
+        self.attrib_type = attrib
+
+    def set_attrib_value(self, value_value):
+        if self.attrib_value is not None:
+            return
+        attrib = HtmlAttrib("value")
+        attrib.set_value(value_value)
+        self.add_attrib(attrib)
+        self.attrib_value = attrib
+
+class HtmlButtonSubmit(HtmlButton):
+    def __init__(self):
+        super(HtmlButtonSubmit, self).__init__()
         self.set_attrib_type("submit")
+        self.set_attrib_value("Submit")
+        self.set_value("Submit")
+
+class HtmlButtonReset(HtmlButton):
+    def __init__(self):
+        super(HtmlButtonReset, self).__init__()
+        self.set_attrib_type("reset")
+        self.set_attrib_value("Reset")
+        self.set_value("Reset")
 
 class HtmlRadioButton(HtmlInput):
     def __init__(self):
@@ -419,6 +484,7 @@ class HtmlCheckBox(HtmlInput):
         super(HtmlCheckBox, self).__init__()
         self.set_attrib_type("checkbox")
         self.attrib_checked = None
+        self.attrib_disabled = None
 
     def set_checked(self):
         if self.attrib_checked is not None:
@@ -426,6 +492,13 @@ class HtmlCheckBox(HtmlInput):
         attrib = HtmlAttrib("checked", "checked")
         self.add_attrib(attrib)
         self.attrib_checked = attrib
+
+    def set_disabled(self):
+        if self.attrib_disabled is not None:
+            return
+        attrib = HtmlAttrib("disabled", "disabled")
+        self.add_attrib(attrib)
+        self.attrib_disabled = attrib
 
 class HtmlOption(HtmlElement):
     def __init__(self):
