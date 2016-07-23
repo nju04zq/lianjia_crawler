@@ -1282,9 +1282,10 @@ def get_web_param_cnt(params):
     return cnt
 
 def init_logging():
-    logging.basicConfig(filename="/var/log/lianjia_search.log",
-                        format="%(asctime)s %(message)s",
-                        level=logging.DEBUG)
+    #logging.basicConfig(filename="/var/log/lianjia_search.log",
+    #                    format="%(asctime)s %(message)s",
+    #                    level=logging.DEBUG)
+    pass
 
 class SearchEnv(object):
     s_region = "region"
