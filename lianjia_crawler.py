@@ -327,7 +327,8 @@ def create_crawl_subprocess(ctx):
     while maxpage > 0:
         page_load = min(maxpage, page_load)
         csv_filepath = generate_tmp_csv_filepath(ctx.tmpfile_base, i)
-        args = [sys.argv[0], "subprocess", ctx.region_id, csv_filepath,
+        args = [sys.executable, sys.argv[0], "subprocess",
+                ctx.region_id, csv_filepath,
                 str(page_start), str(page_start + page_load)]
         process = subprocess.Popen(args)
         process_list.append(process)
