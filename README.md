@@ -28,7 +28,7 @@ Choose according to your OS.
 # Change crawler configurations
 In lianjia\_crawler\_conf.py, perform configuration changes according to comments.
 
-+ Check MySQL configurations in **MySQL\_conf**, set connection parameters. Be careful about the user/password. Confirm it with "*mysql -u root -p*" to log into MySQL, if you use root. When asking for password, just press enter.
++ Check MySQL configurations in **MySQL\_conf**, set connection parameters. Be careful about the user/password. Confirm it with "*mysql -u root -p*" to log into MySQL, if you use root.
 
 + Create a database named lianjia in MySQL with command *"CREATE DATABASE lianjia"*.
 

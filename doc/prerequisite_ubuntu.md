@@ -28,7 +28,7 @@ Please open with Chrome. The following steps has been confirmed on **Ubuntu 14.1
 1. Run *"git clone https://github.com/nju04zq/lianjia_crawler"*.
 
 # Change Apache Server Configuration
-1. Create directory with *"sudo mkdir /var/www/cgi-bin"*, and *"chmod a+x /var/www/cgi-bin"*.
+1. Create directory with *"sudo mkdir /var/www/cgi-bin"*, and *"sudo chmod a+x /var/www/cgi-bin"*.
 2. Copy all the files in project lianjia_crawler to *"/var/www/cgi-bin"*.
 3. Change httpd configuration file *"/etc/apache2/sites-enabled/000-default.conf"*, apply the following diff, then restart httpd with *"sudo service apache2 restart"*.
 

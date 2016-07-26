@@ -20,15 +20,15 @@ Please open with Chrome. The following steps has been confirmed on **Mac OS X**.
 
 # Apache server
 1. Mac should already have apache server installed. Run *"http -v"* to check the version. If failed, check step 2. Otherwise jump to next section.
-2. Goto [apache httpd official website](https://httpd.apache.org/download.cgi#apache24), download the *"\*.tar.gz"* source code file.
-3. Install like python source code.
+2. Goto [apache httpd official website](https://httpd.apache.org/download.cgi#apache24), download the _"*.tar.gz"_ source code file.
+3. Install as python source code.
 
 # Start MySQL & Apache Server
-1. Run "*/usr/local/bin/mysql.server start*" to start MySQL server. Do not run with "*sudo*", or you will see this msg "*ERROR! The server quit without updating PID file*". Then you need to goto directory */usr/local/var/mysql/*, remove the _\*.err_ file, and rerun the command to start MySQL server.
+1. Run "*/usr/local/bin/mysql.server start*" to start MySQL server. Do not run with "*sudo*", or you will see this msg "*ERROR! The server quit without updating PID file*". In that case, you need to goto directory */usr/local/var/mysql/*, remove the _"*.err"_ file, and rerun the command to start MySQL server.
 2. Run *"sudo apachectl start"* to start apache server.
 
 # Clone lianjia_crawler git code
-1. Run *"git clone https://github.com/nju04zq/lianjia_crawler"*
+1. Run *"git clone https://github.com/nju04zq/lianjia_crawler"*.
 
 # Change Apache Server Configuration
 1. Goto lianjia_crawler's root directory.

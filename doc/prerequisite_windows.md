@@ -6,15 +6,15 @@ Please open with Chrome. The following steps has been confirmed on **Windows 7**
 
 # Install MySQL
 1. Goto [MySQL official website](http://dev.mysql.com/downloads/mysql/), select platform as *"Microsft Windows"*, and download the MSI Installer, get a file like *"mysql-installer-web-community-5.7.13.0.msi"*.
-2. Execute the installer, choose MySQL Server on installing. On setting phase, enable it on system startup.
+2. Execute the installer, choose MySQL Server on installing. On setting phase, enable it on system startup. Also remember the password you set for root. You need to update it into the configuration file *lianjia\_crawler\_conf.py* later.
 
 # Install Pip
-Pip should have already been installed with Python. It's path is *C:\Python27\Scripts\pip.exe* (depending on where you have installed Python).
+Pip should have already been installed with Python. It's path is *"C:\Python27\Scripts\pip.exe"* (depending on where you have installed Python).
 
 # Install Python Modules
 1. Install bs4 with *"pip install bs4"*.
 2. Install requests with *"pip install requests"*.
-3. Install MySQLdb, vivist [pypi](https://pypi.python.org/pypi/MySQL-python/1.2.5), download the Win32 exe version. Then execute it.
+3. Install MySQLdb, visit [pypi](https://pypi.python.org/pypi/MySQL-python/1.2.5), download the Win32 exe version. Then execute it.
 
 # Apache server
 1. Download *"Apache 2.4 VC9"* version from [Apache Haus](https://www.apachehaus.com/cgi-bin/download.plx), get a file like *"httpd-2.4.23-x86.zip"*.
@@ -25,8 +25,8 @@ Pip should have already been installed with Python. It's path is *C:\Python27\Sc
 2. Run *"C:\Apache24\bin\httpd.exe"* to start apache server.
 
 # Clone lianjia_crawler git code
-1. Run "*git clone https://github.com/nju04zq/lianjia_crawler*"
-2. Change the first line in lianjia\_search.py from *"#!/usr/bin/env python"* to *"#!C:\Python27\python.exe"*.
+1. Run "*git clone https://github.com/nju04zq/lianjia_crawler*".
+2. Change the first line in *lianjia\_search.py* from *"#!/usr/bin/env python"* to *"#!C:\Python27\python.exe"*.
 
 # Change Apache Server Configuration
 1. Copy all the files in project lianjia_crawler to *"C:\Apache24\cgi-bin"*.
