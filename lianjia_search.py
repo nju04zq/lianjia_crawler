@@ -403,13 +403,15 @@ class SearchApartment(object):
             s = ""
         elif 0 < val_min <= val_max:
             s = " AND {} <= {}".format(val_min, cid)
-            s = " AND {} <= {}".format(cid, val_max)
+            s += " AND {} <= {}".format(cid, val_max)
         elif val_min > 0:
             s = " AND {} <= {}".format(val_min, cid)
         elif val_max > 0:
             s = " AND {} <= {}".format(cid, val_max)
         else:
             s = ""
+
+        logging.critical("range {}/{} {}".format(val_min, val_max, s))
         return s
 
     def make_sql_limit_str(self):
