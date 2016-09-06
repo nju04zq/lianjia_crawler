@@ -52,3 +52,11 @@ In lianjia\_crawler\_conf.py, perform configuration changes according to comment
 
 # View lianjia data in browser
 + In browser(recommend Chrome!), type in "*localhost*" as the address.
+
+# Analyze data with visulization tools
+ + Export data to CSV file
+ 
+ ```sql
+ SELECT location, size, price FROM ly_data INTO OUTFILE '/Users/xyz/xx' FIELDS TERMINATED BY ',';
+ ```
+ + Follow [this link](https://www.kaggle.com/benhamner/d/uciml/iris/python-data-visualizations/comments) for example and [this link](https://stanford.edu/~mwaskom/software/seaborn/) for API reference.
