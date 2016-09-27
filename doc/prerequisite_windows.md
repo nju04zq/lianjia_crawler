@@ -15,6 +15,7 @@ Pip should have already been installed with Python. It's path is *"C:\Python27\S
 1. Install bs4 with *"pip install bs4"*.
 2. Install requests with *"pip install requests"*.
 3. Install MySQLdb, visit [pypi](https://pypi.python.org/pypi/MySQL-python/1.2.5), download the Win32 exe version. Then execute it.
+NOTE: Tool pip install modules from official site. It might be slow in China mainland. In that case, try a domestic mirror site. Run *"pip install xxx -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/"*.
 
 # Apache server
 1. Download *"Apache 2.4 VC9"* version from [Apache Haus](https://www.apachehaus.com/cgi-bin/download.plx), get a file like *"httpd-2.4.23-x86.zip"*.

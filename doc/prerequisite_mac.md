@@ -17,6 +17,7 @@ Please open with Chrome. The following steps has been confirmed on **Mac OS X**.
 1. Install bs4 with *"pip install bs4"*.
 2. Install requests with *"pip install requests"*.
 3. Install MySQLdb with *"pip install MySQL-python"*.
+NOTE: Tool pip install modules from official site. It might be slow in China mainland. In that case, try a domestic mirror site. Run *"pip install xxx -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/"*.
 
 # Apache server
 1. Mac should already have apache server installed. Run *"http -v"* to check the version. If failed, check step 2. Otherwise jump to next section.

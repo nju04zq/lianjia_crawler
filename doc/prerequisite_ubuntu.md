@@ -16,6 +16,7 @@ Please open with Chrome. The following steps has been confirmed on **Ubuntu 14.1
 1. Install bs4 with *"pip install bs4"*.
 2. Install requests with *"pip install requests"*.
 3. Install MySQLdb with *"pip install MySQL-python"*.
+NOTE: Tool pip install modules from official site. It might be slow in China mainland. In that case, try a domestic mirror site. Run *"pip install xxx -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/"*.
 
 # Apache server
 1. Run *"sudo apt-get install apache2"*.
