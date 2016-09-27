@@ -11,7 +11,7 @@ Please open with Chrome. The following steps has been confirmed on **CentOS 6.5*
 
 # Install Pip
 1. Goto [pip official website](https://pip.pypa.io/en/stable/installing/), and download *get-pip.py*.
-2. Run *"python get_pip.py"*.
+2. Run *"python get-pip.py"*.
 
 # Install Python Modules
 1. Install bs4 with *"pip install bs4"*.
