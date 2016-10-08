@@ -37,49 +37,76 @@ NOTE: Tool pip install modules from official site. It might be slow in China mai
 3. Change httpd configuration file *"/etc/apache2/httpd.conf"*, apply the following diff, then restart httpd with *"sudo apachectl restart"*.
 
 ```diff
-*** /etc/apache2/httpd.conf_bk	Wed Jun 29 21:30:52 2016
---- /etc/apache2/httpd.conf	Sun Jul  3 20:41:20 2016
+*** /etc/apache2/httpd.conf_bk	Sat Oct  8 13:28:10 2016
+--- /etc/apache2/httpd.conf	Sat Oct  8 13:28:41 2016
 ***************
-*** 156,158 ****
+*** 154,160 ****
+  LoadModule autoindex_module libexec/apache2/mod_autoindex.so
+  #LoadModule asis_module libexec/apache2/mod_asis.so
   #LoadModule info_module libexec/apache2/mod_info.so
 ! #LoadModule cgi_module libexec/apache2/mod_cgi.so
   #LoadModule dav_fs_module libexec/apache2/mod_dav_fs.so
---- 156,158 ----
+  #LoadModule dav_lock_module libexec/apache2/mod_dav_lock.so
+  #LoadModule vhost_alias_module libexec/apache2/mod_vhost_alias.so
+--- 154,160 ----
+  LoadModule autoindex_module libexec/apache2/mod_autoindex.so
+  #LoadModule asis_module libexec/apache2/mod_asis.so
   #LoadModule info_module libexec/apache2/mod_info.so
 ! LoadModule cgi_module libexec/apache2/mod_cgi.so
   #LoadModule dav_fs_module libexec/apache2/mod_dav_fs.so
+  #LoadModule dav_lock_module libexec/apache2/mod_dav_lock.so
+  #LoadModule vhost_alias_module libexec/apache2/mod_vhost_alias.so
 ***************
-*** 235,237 ****
+*** 233,239 ****
+  # documents. By default, all requests are taken from this directory, but
+  # symbolic links and aliases may be used to point to other locations.
   #
 ! DocumentRoot "/Library/WebServer/Documents"
   <Directory "/Library/WebServer/Documents">
---- 235,237 ----
+      #
+      # Possible values for the Options directive are "None", "All",
+--- 233,239 ----
+  # documents. By default, all requests are taken from this directory, but
+  # symbolic links and aliases may be used to point to other locations.
   #
 ! DocumentRoot "/Library/WebServer/CGI-Executables"
   <Directory "/Library/WebServer/Documents">
+      #
+      # Possible values for the Options directive are "None", "All",
 ***************
-*** 270,272 ****
+*** 268,274 ****
+  # is requested.
+  #
   <IfModule dir_module>
 !     DirectoryIndex index.html
   </IfModule>
---- 270,273 ----
+  
+  #
+--- 268,275 ----
+  # is requested.
+  #
   <IfModule dir_module>
 ! #    DirectoryIndex index.html
 !      DirectoryIndex search.py
   </IfModule>
+  
+  #
 ***************
-*** 380,384 ****
+*** 379,385 ****
+  #
   <Directory "/Library/WebServer/CGI-Executables">
       AllowOverride None
 !     Options None
       Require all granted
   </Directory>
---- 381,386 ----
+  
+--- 380,387 ----
+  #
   <Directory "/Library/WebServer/CGI-Executables">
       AllowOverride None
 !     Options +ExecCGI
 !     AddHandler cgi-script .py
       Require all granted
   </Directory>
+  
 ```
-
