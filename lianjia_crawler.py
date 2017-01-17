@@ -83,7 +83,7 @@ class Apartment(object):
 
     def parse_building(self, tag):
         result = tag.find_all("div", "con")
-        result = re.findall("<span>\|</span>(.*)\r\n\t", str(result[0]))
+        result = re.findall("<span>\|[ ]*</span>(.*)\r?\n\t", str(result[0]))
         if len(result)  == 1:
             result += [result[0], result[0]]
         elif len(result) == 2:
@@ -453,11 +453,16 @@ def get_region_maxpage(ctx):
 
     soup = bs4.BeautifulSoup(s, "html.parser")
 
-    result = soup.find_all("div", "page-box house-lst-page-box")
-    pages = re.findall(">(\d+)<", str(result[0]))
-    maxpage = int(pages[-1])
-    ctx.maxpage = maxpage
-    logging.critical("Region maxpage {}".format(ctx.maxpage))
+    try:
+        result = soup.find_all("div", "page-box house-lst-page-box")
+        pages = re.findall(">(\d+)<", str(result[0]))
+        maxpage = int(pages[-1])
+        ctx.maxpage = maxpage
+        logging.critical("Region maxpage {}".format(ctx.maxpage))
+    except:
+        print "Fail to get maxpage, lianjia resp:"
+        print r.text
+        raise
 
 def crawl_one_region(ctx):
     region_name = crawl_regions[ctx.region_id].region_name
