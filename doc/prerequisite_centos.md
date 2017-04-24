@@ -20,7 +20,7 @@ Please open with Chrome. The following steps has been confirmed on **CentOS 6.5*
 NOTE: Tool pip install modules from official site. It might be slow in China mainland. In that case, try a domestic mirror site. Run *"pip install xxx -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/"*.
 
 # Apache server
-1. CentOS should already have apache server installed. Run *"http -v"* to check the version. If failed, check step 2. Otherwise jump to next section.
+1. CentOS should already have apache server installed. Run *"httpd -v"* to check the version. If failed, check step 2. Otherwise jump to next section.
 2. Run *"sudo yum install httpd"*.
 
 # Start MySQL & Apache Server

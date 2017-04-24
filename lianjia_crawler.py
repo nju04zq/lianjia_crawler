@@ -12,6 +12,7 @@ import logging
 import requests
 import datetime
 import tempfile
+import traceback
 import subprocess
 from lianjia_crawler_conf import MySQL_conf, region_def
 
@@ -39,59 +40,55 @@ class Apartment(object):
     def parse_id(self):
         self.aid = self.href.split("/")[-1].split(".")[0]
 
-    def is_href_tag(self, tag):
-        if tag.has_attr("name") and tag["name"] == "selectDetail":
-            return True
-        else:
-            return False
-
     def parse_href(self, tag):
-        result = tag.find_all(self.is_href_tag)
+        result = tag.find_all("a",
+                              class_="text link-hover-green",
+                              href=re.compile("ershoufang"))
         self.href = result[0]["href"]
 
     def parse_location(self, tag):
-        result = tag.find_all("div", "where")
-        result = result[0].find_all("span", "nameEllipsis")
-        self.location = result[0]["title"]
+        result = tag.find_all("a",
+                              class_="laisuzhou",
+                              href=re.compile("xiaoqu"))
+        self.location = result[0].string
 
     def parse_price(self, tag):
-        result = tag.find_all("span", "num")
-        result = re.findall("\d+", result[0].contents[0])
-        self.total = int(result[0])
-        result = tag.find_all("div", "price-pre")
-        result = re.findall("\d+", result[0].contents[0])
+        result = tag.find_all("span",
+                              class_=re.compile("info-col price-item minor"))
+        result = re.findall("\d+", result[0].string)
         self.price = int(result[0])
 
+        result = tag.find_all("span", class_="total-price strong-num")
+        result = re.findall("\d+", result[0].string)
+        self.total = int(result[0])
+
     def parse_size(self, tag):
-        result = tag.find_all("div", "where")
-        result = re.findall("<span>(\d+\.\d+)", str(result[0]))
+        result = tag.find_all("span", class_="info-col row1-text")
+        result = re.findall(u"\|[ ]* ([0-9.]+)平", unicode(result[0]))
         self.size = result[0]
 
     def parse_subway(self, tag):
-        result = tag.find_all("span", "fang-subway-ex")
+        result = tag.find_all("span",
+                              class_="c-prop-tag2",
+                              string=re.compile(u"距离"))
         if len(result) == 0:
             self.subway = 0
             self.station = ""
             self.smeter = 0
             return
 
-        result = re.findall("<span>(.*)</span>", str(result[0].contents[0]))
-        result = re.findall("(\d+)号线(.*)站(\d+)米", result[0])
+        result = re.findall(u"距离(\d+)号线(.*)站(\d+)米", result[0].string)
         self.subway = result[0][0]
         self.station = result[0][1]
         self.smeter = result[0][2]
 
     def parse_building(self, tag):
-        result = tag.find_all("div", "con")
-        result = re.findall("<span>\|[ ]*</span>(.*)\r?\n\t", str(result[0]))
-        if len(result)  == 1:
-            result += [result[0], result[0]]
-        elif len(result) == 2:
-            result.append(result[1])
-        self.parse_floor(result[0])
-        self.parse_year(result[2])
+        self.parse_floor(tag)
+        self.parse_year(tag)
 
-    def parse_floor(self, s):
+    def parse_floor(self, tag):
+        result = tag.find_all("span", class_="info-col row1-text")
+        s = unicode(result[0])
         result = self.parse_normal_floor(s)
         if result:
             return
@@ -102,7 +99,7 @@ class Apartment(object):
         self.tfloor = 0
 
     def parse_normal_floor(self, s):
-        result = re.findall("(.*)层/(\d+)层", s)
+        result = re.findall(u"\|[ ]*(.*)区/(\d+)层", s)
         if len(result) == 0:
             return False
 
@@ -121,7 +118,7 @@ class Apartment(object):
         return True
 
     def parse_villa_floor(self, s):
-        result = re.findall("(\d+)层", s)
+        result = re.findall(u"(\d+)层", s)
         if len(result) == 0:
             return False
 
@@ -129,18 +126,13 @@ class Apartment(object):
         self.tfloor = int(result[0])
         return True
 
-    def parse_year(self, s):
+    def parse_year(self, tag):
         self.year = "NULL"
-
-        result = re.findall("(\d+)", s)
+        result = tag.find_all("span", class_="info-col row2-text")
+        result = re.findall(u"\|[ ]*(\d+)年建", unicode(result[0]))
         if len(result) == 0:
             return
-
-        self.year = int(result[0])
-        if self.year < 1000:
-            self.year = "NULL"
-        else:
-            self.year = str(self.year)
+        self.year = result[0]
 
     def __str__(self):
         result = ""
@@ -289,7 +281,7 @@ def crawl_link(link, apartment_list):
     r = requests.get(link)
     soup = bs4.BeautifulSoup(r.text, "html.parser")
 
-    apartment_tags = soup.find_all("div", "info-panel")
+    apartment_tags = soup.find_all("div", "info")
     for apartment_tag in apartment_tags:
         apartment = Apartment(tag=apartment_tag)
         apartment_list.append(apartment)
@@ -452,9 +444,8 @@ def get_region_maxpage(ctx):
     s = r.text
 
     soup = bs4.BeautifulSoup(s, "html.parser")
-
     try:
-        result = soup.find_all("div", "page-box house-lst-page-box")
+        result = soup.find_all("div", "c-pagination")
         pages = re.findall(">(\d+)<", str(result[0]))
         maxpage = int(pages[-1])
         ctx.maxpage = maxpage
@@ -462,7 +453,8 @@ def get_region_maxpage(ctx):
     except:
         print "Fail to get maxpage, lianjia resp:"
         print r.text
-        raise
+        print traceback.format_exc()
+        print "fail to get maxpage"
 
 def crawl_one_region(ctx):
     region_name = crawl_regions[ctx.region_id].region_name
