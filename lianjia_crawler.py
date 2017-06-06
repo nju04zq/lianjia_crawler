@@ -42,7 +42,7 @@ class Apartment(object):
 
     def parse_href(self, tag):
         result = tag.find_all("a",
-                              class_="text link-hover-green",
+                              class_="text link-hover-green js_fanglist_title",
                               href=re.compile("ershoufang"))
         self.href = result[0]["href"]
 
