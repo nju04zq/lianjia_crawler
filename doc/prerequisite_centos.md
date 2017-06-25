@@ -32,7 +32,7 @@ NOTE: Tool pip install modules from official site. It might be slow in China mai
 
 # Change Apache Server Configuration
 1. Copy all the files in project lianjia\_crawler to *"/var/www/cgi-bin"*.
-2. Change httpd configuration file *"/etc/apache2/httpd.conf"*, apply the following diff, then restart httpd with *"sudo httpd restart"*.
+2. Change httpd configuration file *"/etc/httpd/conf/httpd.conf"*, apply the following diff, then restart httpd with *"sudo httpd restart"*.
 
 ```diff
 *** /etc/httpd/conf/httpd.conf_bk	Thu Jul 21 10:29:18 2016
