@@ -41,36 +41,35 @@ class Apartment(object):
         self.aid = self.href.split("/")[-1].split(".")[0]
 
     def parse_href(self, tag):
-        result = tag.find_all("a",
-                              class_="text link-hover-green js_triggerGray js_fanglist_title",
-                              href=re.compile("ershoufang"))
+        result = tag.find_all("div", class_="title")
+        result = result[0].find_all("a",
+                                    href=re.compile("ershoufang"))
         self.href = result[0]["href"]
 
     def parse_location(self, tag):
         result = tag.find_all("a",
-                              class_="laisuzhou",
-                              href=re.compile("xiaoqu"))
+                              attrs={"data-el": "region"})
         self.location = result[0].string
 
     def parse_price(self, tag):
-        result = tag.find_all("span",
-                              class_=re.compile("info-col price-item minor"))
-        result = re.findall("\d+", result[0].string)
-        self.price = int(result[0])
+        result = tag.find_all("div", class_="unitPrice")
+        self.price = int(result[0]["data-price"])
 
-        result = tag.find_all("span", class_="total-price strong-num")
-        result = re.findall("\d+", result[0].string)
-        self.total = int(result[0])
+        result = tag.find_all("div", class_="totalPrice")
+        result = re.findall(">(\d+[.]?\d+)<", str(result[0]))
+        s = result[0]
+        if "." in s:
+            self.total = int(float(s))
+        else:
+            self.total = int(s)
 
     def parse_size(self, tag):
-        result = tag.find_all("span", class_="info-col row1-text")
+        result = tag.find_all("div", class_="houseInfo")
         result = re.findall(u"\|[ ]* ([0-9.]+)平", unicode(result[0]))
         self.size = result[0]
 
     def parse_subway(self, tag):
-        result = tag.find_all("span",
-                              class_="c-prop-tag2",
-                              string=re.compile(u"距离"))
+        result = tag.find_all("span", class_="subway")
         if len(result) == 0:
             self.subway = 0
             self.station = ""
@@ -84,22 +83,19 @@ class Apartment(object):
 
     def parse_building(self, tag):
         self.parse_floor(tag)
-        self.parse_year(tag)
 
     def parse_floor(self, tag):
-        result = tag.find_all("span", class_="info-col row1-text")
+        result = tag.find_all("div", class_="positionInfo")
         s = unicode(result[0])
         result = self.parse_normal_floor(s)
         if result:
             return
-        result = self.parse_villa_floor(s)
-        if result:
-            return
         self.floor = "U"
         self.tfloor = 0
+        self.year = "NULL"
 
     def parse_normal_floor(self, s):
-        result = re.findall(u"\|[ ]*(.*)区/(\d+)层", s)
+        result = re.findall(u"span>(.*)楼层.*共(\d+)层.*(\d{4})年建", s)
         if len(result) == 0:
             return False
 
@@ -115,24 +111,8 @@ class Apartment(object):
             self.floor = "U"
 
         self.tfloor = int(result[1])
+        self.year = int(result[2])
         return True
-
-    def parse_villa_floor(self, s):
-        result = re.findall(u"(\d+)层", s)
-        if len(result) == 0:
-            return False
-
-        self.floor = "V"
-        self.tfloor = int(result[0])
-        return True
-
-    def parse_year(self, tag):
-        self.year = "NULL"
-        result = tag.find_all("span", class_="info-col row2-text")
-        result = re.findall(u"\|[ ]*(\d+)年建", unicode(result[0]))
-        if len(result) == 0:
-            return
-        self.year = result[0]
 
     def __str__(self):
         result = ""
@@ -277,14 +257,37 @@ class SQLDB(object):
     def close(self):
         self.db.close()
 
+def request_link(link):
+    logging.debug("Request link {0}".format(link))
+    i = 0
+    MAX_RETRY_ON_GET_LINK = 5
+    while True:
+        try:
+            r = requests.get(link)
+        except requests.exceptions.ConnectionError as e:
+            i += 1
+            if i >= MAX_RETRY_ON_GET_LINK:
+                raise
+            else:
+                logging.error("Retry on {0}".format(e))
+        else:
+            return r
+
 def crawl_link(link, apartment_list):
-    r = requests.get(link)
+    #r = requests.get(link)
+    r = request_link(link)
     soup = bs4.BeautifulSoup(r.text, "html.parser")
 
-    apartment_tags = soup.find_all("div", "info")
+    apartment_tags = soup.find_all("div", "info clear")
     for apartment_tag in apartment_tags:
-        apartment = Apartment(tag=apartment_tag)
-        apartment_list.append(apartment)
+        apartment = None
+        try:
+            apartment = Apartment(tag=apartment_tag)
+        except:
+            print traceback.format_exc()
+            print link, apartment_tag
+        if apartment is not None:
+            apartment_list.append(apartment)
 
 def crawl_one_page(region_id, page_id, apartment_list):
     full_link = crawl_regions[region_id].get_link(page_id)
@@ -440,13 +443,14 @@ def update_db(ctx):
 
 def get_region_maxpage(ctx):
     full_link = crawl_regions[ctx.region_id].get_link(1)
-    r = requests.get(full_link)
+    #r = requests.get(full_link)
+    r = request_link(full_link)
     s = r.text
 
     soup = bs4.BeautifulSoup(s, "html.parser")
     try:
-        result = soup.find_all("div", "c-pagination")
-        pages = re.findall(">(\d+)<", str(result[0]))
+        result = soup.find_all("div", "page-box house-lst-page-box")
+        pages = re.findall('"totalPage":(\d+)', str(result[0]))
         maxpage = int(pages[-1])
         ctx.maxpage = maxpage
         logging.critical("Region maxpage {}".format(ctx.maxpage))
@@ -475,18 +479,11 @@ class CrawlRegion(object):
     def __init__(self, param):
         self.region_name = param[0]
         self.region_id = param[1]
-        if len(param) > 2:
-            self.big_region = param[2]
-        else:
-            self.big_region = None
+        self.big_region = param[2]
 
     def get_link(self, page):
-        if self.big_region is None:
-            base_link = "http://sh.lianjia.com/ershoufang/d{}s3rs{}"
-            full_link = base_link.format(page, self.region_name)
-        else:
-            base_link = "http://sh.lianjia.com/ershoufang/{}/d{}s3"
-            full_link = base_link.format(self.big_region, page)
+        base_link = "https://sh.lianjia.com/ershoufang/{0}/pg{1}"
+        full_link = base_link.format(self.big_region, page)
         return full_link
 
 class CrawlContext(object):
@@ -538,7 +535,7 @@ def crawl_main():
 crawl_process_cnt = 4
 
 ## lianjia web link
-lianjia_link = "http://sh.lianjia.com/ershoufang/d{}s3rs{}"
+lianjia_link = "https://sh.lianjia.com/ershoufang/"
 ###########################################################
 
 ##--------------------START Test Code----------------------------##
@@ -563,7 +560,7 @@ def run_test_csv_input(csv_filename):
 
 def run_test_link():
     apartment_list = []
-    crawl_link("http://sh.lianjia.com/ershoufang/putuo/s2rs",
+    crawl_link("https://sh.lianjia.com/ershoufang/shenzhuang/pg15",
                apartment_list)
     for apartment in apartment_list:
         print apartment

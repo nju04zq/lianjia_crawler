@@ -9,7 +9,7 @@
 MySQL_conf = {
         "host": "localhost",
         "user": "root",
-        "passwd": "",
+        "passwd": "root",
         "db": "lianjia",
         "charset": "utf8"}
 
@@ -19,11 +19,9 @@ MySQL_conf = {
 ## To get that abbreviation, go to http://sh.lianjia.com/ershoufang/, and
 ## choose the big-region you are interested in(区域部分), the xx string in
 ## sh.lianjia.com/ershoufang/xx/ is the one we need.
-region_def = [("松江大学城", "sjdxc"),
-              ("罗阳", "ly"),
+region_def = [("松江大学城", "sjdxc", "songjiangdaxuecheng"),
               ("梅陇", "ml", "meilong"),
               ("春申", "cs", "chunshen"),
               ("莘庄", "xz", "shenzhuang"),
-              ("张江", "zj", "zhangjiang"),
              ]
 ###########################################################
