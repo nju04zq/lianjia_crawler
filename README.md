@@ -54,6 +54,8 @@ In lianjia\_crawler\_conf.py, perform configuration changes according to comment
 + In browser(recommend Chrome!), type in "*localhost*" as the address.
 
 # Analyze data with visulization tools
+ + With script *lianjia\_avg.py*, you can check how price going in the past. Here one example figure, red line is the price change, while the blue line stands for the change of the number of apartments listed.
+ ![Figure about apartments' price change](./doc/price.png)
  + Export data to CSV file
  
  ```sql

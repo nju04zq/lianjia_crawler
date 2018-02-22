@@ -243,15 +243,19 @@ class LoDayPrices(object):
 reload(sys)
 sys.setdefaultencoding("utf-8")
 
+location = "罗阳七村"
 #location = "罗阳二村"
-#region = "ml"
-location = "春申景城（公寓）"
-region = "cs"
+#location = "上海阳城"
+region = "ml"
 day_prices1 = LoDayPrices(location, region)
 
 #location = "保利西子湾"
 #region = "sjdxc"
-#day_prices2 = LoDayPrices(location, region)
+#day_prices1 = LoDayPrices(location, region)
+
+#location = "春申景城（公寓）"
+#region = "cs"
+#day_prices1 = LoDayPrices(location, region)
 
 #sns.set_style("darkgrid")
 #fig = plt.figure()
