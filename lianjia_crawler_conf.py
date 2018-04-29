@@ -22,6 +22,6 @@ MySQL_conf = {
 region_def = [("松江大学城", "sjdxc", "songjiangdaxuecheng"),
               ("梅陇", "ml", "meilong"),
               ("春申", "cs", "chunshen"),
-              ("莘庄", "xz", "shenzhuang"),
+              ("莘庄", "xz", "xinzhuang5"),
              ]
 ###########################################################
