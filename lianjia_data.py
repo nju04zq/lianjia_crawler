@@ -9,7 +9,7 @@ import datetime
 from lianjia_crawler import SQLDB, CrawlContext, prepare_db
 from lianjia_crawler_conf import region_def
 
-def export():
+def export_():
     ts = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
     dirname = "data-{0}".format(ts)
     os.mkdir(dirname)
