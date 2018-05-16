@@ -367,7 +367,7 @@ def prepare_db(ctx):
 
 def create_region_data_table(ctx, db):
     table_name = ctx.region_data_table
-    cmd = '''CREATE TABLE {}(location CHAR(32) CHARACTER SET utf8,
+    cmd = '''CREATE TABLE {}(location CHAR(64) CHARACTER SET utf8,
              aid CHAR(32) CHARACTER SET utf8,
              price INT,
              size CHAR(32) CHARACTER SET utf8,
