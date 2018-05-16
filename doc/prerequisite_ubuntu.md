@@ -62,3 +62,5 @@ NOTE: Tool pip install modules from official site. It might be slow in China mai
   
       # Available loglevels: trace8, ..., trace1, debug, info, notice, warn,
 ```
+
+4. Change listen port in /etc/apache2/ports.conf
