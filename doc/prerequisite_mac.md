@@ -6,8 +6,7 @@ Please open with Chrome. The following steps has been confirmed on **Mac OS X**.
 3. Run *"python -V"*, make sure the right python version is installed.
 
 # Install MySQL
-1. Goto [MySQL official website](http://dev.mysql.com/downloads/mysql/), select platform as *"Mac OS X"*, and download *"DMG Archive"*, get a file like *"mysql-5.7.13-osx10.11-x86_64.dmg"*.
-2. Double click the dmg file to install MySQL.
+1. Install MySQL with *"brew install mysql"*.
 
 # Install Pip
 1. Goto [pip official website](https://pip.pypa.io/en/stable/installing/), and download *get-pip.py*.
@@ -16,11 +15,13 @@ Please open with Chrome. The following steps has been confirmed on **Mac OS X**.
 # Install Python Modules
 1. Install bs4 with *"pip install bs4"*.
 2. Install requests with *"pip install requests"*.
+3. Install mysql-connector with *"brew install mysql-connector-c"*.
 3. Install MySQLdb with *"pip install MySQL-python"*.
-NOTE: Tool pip install modules from official site. It might be slow in China mainland. In that case, try a domestic mirror site. Run *"pip install xxx -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/"*.
+NOTE1: If see *"IndexError: string index out of range"* error, then change */usr/local/bin/mysql_config*, `libs="$libs  -l"` to `libs="$libs -lmysqlclient -lssl -lcrypto"`.
+NOTE2: Tool pip install modules from official site. It might be slow in China mainland. In that case, try a domestic mirror site. Run *"pip install xxx -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/"*.
 
 # Apache server
-1. Mac should already have apache server installed. Run *"http -v"* to check the version. If failed, check step 2. Otherwise jump to next section.
+1. Mac should already have apache server installed. Run *"httpd -v"* to check the version. If failed, check step 2. Otherwise jump to next section.
 2. Goto [apache httpd official website](https://httpd.apache.org/download.cgi#apache24), download the _"*.tar.gz"_ source code file.
 3. Install as python source code.
 

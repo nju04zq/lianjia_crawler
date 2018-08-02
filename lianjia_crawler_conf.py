@@ -11,6 +11,7 @@ MySQL_conf = {
         "user": "root",
         "passwd": "root",
         "db": "lianjia",
+        "local_infile": 1,
         "charset": "utf8"}
 
 ## The regions to crawl, with name/id pair, id should be unique.
