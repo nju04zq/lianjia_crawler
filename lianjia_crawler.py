@@ -76,15 +76,15 @@ class Apartment(object):
         self.smeter = 0
 
         result = tag.find_all("span", class_="subway")
-        if len(result) == 0:
-            return
+        if len(result) > 0:
+            self.subway = 100
 
-        result = re.findall(u"距离(\d+)号线(.*)站(\d+)米", result[0].string)
-        if len(result) == 0:
-            return
-        self.subway = result[0][0]
-        self.station = result[0][1]
-        self.smeter = result[0][2]
+        #result = re.findall(u"距离(\d+)号线(.*)站(\d+)米", result[0].string)
+        #if len(result) == 0:
+        #    return
+        #self.subway = result[0][0]
+        #self.station = result[0][1]
+        #self.smeter = result[0][2]
 
     def parse_building(self, tag):
         self.parse_floor(tag)
