@@ -50,6 +50,8 @@ class Apartment(object):
         result = tag.find_all("a",
                               attrs={"data-el": "region"})
         self.location = result[0].string
+        self.location = self.location.rstrip()
+        self.location = self.location.rstrip(",")
 
     def parse_price(self, tag):
         result = tag.find_all("div", class_="unitPrice")
@@ -69,14 +71,17 @@ class Apartment(object):
         self.size = result[0]
 
     def parse_subway(self, tag):
+        self.subway = 0
+        self.station = ""
+        self.smeter = 0
+
         result = tag.find_all("span", class_="subway")
         if len(result) == 0:
-            self.subway = 0
-            self.station = ""
-            self.smeter = 0
             return
 
         result = re.findall(u"距离(\d+)号线(.*)站(\d+)米", result[0].string)
+        if len(result) == 0:
+            return
         self.subway = result[0][0]
         self.station = result[0][1]
         self.smeter = result[0][2]
